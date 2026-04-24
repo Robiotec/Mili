@@ -5,6 +5,32 @@ Version limpia y mantenible
 ========================================================================================
 */
 
+-- =====================================================================================
+-- 0. CREACION AUTOMATICA DE BASE DE DATOS Y USUARIO (EJECUTAR COMO SUPERUSUARIO)
+-- =====================================================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'dashboard') THEN
+        PERFORM dblink_exec('dbname=postgres', 'CREATE DATABASE dashboard');
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    -- Si dblink no está instalado, ignorar
+    NULL;
+END$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'dashboarduser') THEN
+        CREATE USER dashboarduser WITH ENCRYPTED PASSWORD 'dashboardpass';
+    END IF;
+END$$;
+
+GRANT ALL PRIVILEGES ON DATABASE dashboard TO dashboarduser;
+-- IMPORTANTE: Ejecutar este bloque en la base 'dashboard' después de crearla
+--
+-- Otorgar permisos sobre el esquema public
+GRANT USAGE, CREATE ON SCHEMA public TO dashboarduser;
+
 BEGIN;
 
 -- =====================================================================================
