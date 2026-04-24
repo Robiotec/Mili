@@ -1,0 +1,26 @@
+api: yes
+apiAddress: 127.0.0.1:9998
+
+# Autenticación externa
+authMethod: http
+authHTTPAddress: http://127.0.0.1:8004/auth/validate
+
+# Puertos separados del mediamtx principal
+rtspAddress: :8654
+rtmpAddress: :1936
+hlsAddress: :8988
+webrtcAddress: :8989
+srtAddress: :8991
+rtpAddress: :8900
+rtcpAddress: :8901
+
+# WebRTC - configuración ICE para servidor público
+webrtcAdditionalHosts:
+  - 140.82.30.79
+
+webrtcLocalUDPAddress: :8190
+webrtcLocalTCPAddress: :8190
+
+paths:
+  "~^.*$":
+    overridePublisher: yes
