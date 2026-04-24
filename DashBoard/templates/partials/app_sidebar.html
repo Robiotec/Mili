@@ -1,0 +1,136 @@
+<aside class="app-sidebar" id="app-sidebar" aria-label="Menú del sistema">
+  <div class="sidebar-header">
+    <div class="sidebar-header-bar">
+      <div class="sidebar-brand-row">
+        <div class="sidebar-logo" aria-hidden="true">RB</div>
+        <div class="sidebar-brand-copy">
+          <strong>ROBIOTEC</strong>
+          <span>Security</span>
+        </div>
+      </div>
+      <button
+        class="sidebar-toggle"
+        id="sidebar-toggle"
+        type="button"
+        aria-label="Expandir menú"
+        aria-controls="app-sidebar"
+        aria-expanded="false"
+      ></button>
+    </div>
+    <div class="sidebar-brand-meta">
+      <span class="sidebar-brand-kicker">Security Console</span>
+      <p class="sidebar-brand-note">Monitoreo visual, telemetría y eventos desde un único punto de control.</p>
+    </div>
+  </div>
+  <nav class="sidebar-nav" aria-label="Navegación principal">
+    <div class="sidebar-nav-head">
+      <span>Navegación</span>
+      <strong>Centro operativo</strong>
+    </div>
+    <a class="sidebar-link" href="/">
+      <span class="sidebar-icon" aria-hidden="true">⌂</span>
+      <span class="sidebar-link-copy">
+        <strong>Dashboard</strong>
+        <span>Resumen ejecutivo</span>
+      </span>
+      <span class="sidebar-link-tooltip" aria-hidden="true">Dashboard</span>
+    </a>
+    <a class="sidebar-link" href="/perfil">
+      <span class="sidebar-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path
+            d="M12 12.25a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.8"
+          />
+          <path
+            d="M5.75 18.5a6.25 6.25 0 0 1 12.5 0"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.8"
+          />
+        </svg>
+      </span>
+      <span class="sidebar-link-copy">
+        <strong>Perfil</strong>
+        <span>Información de usuario</span>
+      </span>
+      <span class="sidebar-link-tooltip" aria-hidden="true">Perfil</span>
+    </a>
+    <a class="sidebar-link" href="/camaras">
+      <span class="sidebar-icon" aria-hidden="true">⌖</span>
+      <span class="sidebar-link-copy">
+        <strong>Cámaras</strong>
+        <span>Video en vivo</span>
+      </span>
+      <span class="sidebar-link-tooltip" aria-hidden="true">Cámaras</span>
+    </a>
+    <a class="sidebar-link" href="/mapa">
+      <span class="sidebar-icon" aria-hidden="true">◎</span>
+      <span class="sidebar-link-copy">
+        <strong>Vehículos</strong>
+        <span>Posición y telemetría</span>
+      </span>
+      <span class="sidebar-link-tooltip" aria-hidden="true">Vehículos</span>
+    </a>
+    <a class="sidebar-link" href="/eventos">
+      <span class="sidebar-icon" aria-hidden="true">◫</span>
+      <span class="sidebar-link-copy">
+        <strong>Logs</strong>
+        <span>Alertas y actividad</span>
+      </span>
+      <span class="sidebar-link-tooltip" aria-hidden="true">Logs</span>
+    </a>
+    <a class="sidebar-link" href="/registro-vehiculos">
+      <span class="sidebar-icon" aria-hidden="true">▤</span>
+      <span class="sidebar-link-copy">
+        <strong>Registro de Vehículos</strong>
+        <span>Placas y evidencias</span>
+      </span>
+      <span class="sidebar-link-tooltip" aria-hidden="true">Registro de Vehículos</span>
+    </a>
+    __DEVELOPER_MENU_LINK__
+  </nav>
+
+  <div class="sidebar-footer" aria-label="Resumen del menú">
+    <span class="sidebar-footer-kicker">Monitoreo</span>
+    <strong>Acceso rápido</strong>
+    <span class="sidebar-footer-copy">Dashboard, cámaras, mapa, eventos y registro de vehículos en un mismo circuito operativo.</span>
+    <div class="sidebar-footer-user" aria-label="Usuario autenticado">
+      <span class="sidebar-footer-user-label">Usuario activo</span>
+      <strong class="sidebar-footer-user-name">__AUTH_USERNAME__</strong>
+    </div>
+  </div>
+  <button class="sidebar-link sidebar-link-logout" type="button" aria-label="Cerrar sesión">
+    <span class="sidebar-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path
+          d="M10 7.75V6.5A2.5 2.5 0 0 1 12.5 4h4A2.5 2.5 0 0 1 19 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-4A2.5 2.5 0 0 1 10 17.5v-1.25"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.8"
+        />
+        <path
+          d="M14.5 12H5.75m0 0 2.75-2.75M5.75 12l2.75 2.75"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.8"
+        />
+      </svg>
+    </span>
+    <span class="sidebar-link-copy">
+      <strong>Cerrar sesión</strong>
+      <span>Salir del panel</span>
+    </span>
+    <span class="sidebar-link-tooltip" aria-hidden="true">Cerrar sesión</span>
+  </button>
+</aside>

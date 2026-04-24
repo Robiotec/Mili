@@ -1,0 +1,117 @@
+<section class="page-section-shell page-user-admin-shell">
+  <div class="page-section-head">
+    <div>
+      <div class="ops-eyebrow">Roles</div>
+      <h2>CRUD operativo de roles</h2>
+    </div>
+
+    <div class="camera-page-actions">
+      <button class="camera-register-open" id="user-admin-refresh" type="button">
+        Actualizar panel
+      </button>
+    </div>
+  </div>
+
+  <div class="user-admin-workbench">
+    <section class="ops-card page-panel user-admin-main-card">
+      <div class="ops-head user-admin-detail-head">
+        <div>
+          <div class="ops-eyebrow">Edición</div>
+          <h2 id="role-admin-detail-title">Registrar nuevo rol</h2>
+          <p class="user-admin-detail-copy" id="role-admin-detail-copy">
+            Seleccionas uno del panel derecho, aquí podrás ajustarlo o eliminarlo.
+          </p>
+        </div>
+      </div>
+
+      <form class="user-admin-form" id="role-admin-form">
+        <div class="user-admin-form-grid">
+          <label class="camera-register-field">
+            <span class="camera-register-label">
+              <span class="camera-register-step">1</span>
+              <span>Código del rol</span>
+            </span>
+            <input
+              id="role-admin-code"
+              name="codigo"
+              type="text"
+              maxlength="30"
+              placeholder="operador_campo"
+              autocomplete="off"
+              required
+            />
+            <span class="camera-register-help">Se guardará como identificador interno del rol. Usa minúsculas, números o guiones bajos.</span>
+          </label>
+
+          <label class="camera-register-field">
+            <span class="camera-register-label">
+              <span class="camera-register-step">2</span>
+              <span>Nombre visible</span>
+            </span>
+            <input
+              id="role-admin-name"
+              name="nombre"
+              type="text"
+              maxlength="50"
+              placeholder="Operador de Campo"
+              autocomplete="off"
+              required
+            />
+            <span class="camera-register-help">Es la etiqueta que verá el equipo cuando seleccione el rol en el panel de usuarios.</span>
+          </label>
+
+          <label class="camera-register-field">
+            <span class="camera-register-label">
+              <span class="camera-register-step">3</span>
+              <span>Nivel de orden</span>
+            </span>
+            <input
+              id="role-admin-order"
+              name="nivel_orden"
+              type="number"
+              min="0"
+              max="32767"
+              placeholder="10"
+              required
+            />
+            <span class="camera-register-help">Un valor mayor representa un rol con prioridad más alta dentro del sistema.</span>
+          </label>
+
+          <label class="camera-register-field">
+            <span class="camera-register-label">
+              <span class="camera-register-step">4</span>
+              <span>Tipo de rol</span>
+            </span>
+            <select id="role-admin-system" name="es_sistema" required>
+              <option value="true">Rol de sistema</option>
+              <option value="false">Rol personalizado</option>
+            </select>
+            <span class="camera-register-help">Usa roles de sistema para perfiles base del producto y personalizados para necesidades operativas puntuales.</span>
+          </label>
+        </div>
+
+        <div class="user-admin-note">
+          Solo el rol <strong>desarrollador</strong> puede editar esta matriz. No podrás eliminar un rol si todavía tiene usuarios asignados.
+        </div>
+
+        <div class="camera-register-actions">
+          <div class="ops-note camera-register-feedback user-admin-feedback" id="role-admin-feedback" hidden></div>
+          <div class="camera-register-action-row">
+            <button class="camera-register-secondary" id="role-admin-reset" type="button">Nuevo rol</button>
+            <button class="camera-register-secondary camera-register-danger" id="role-admin-delete" type="button" hidden>Eliminar rol</button>
+            <button class="camera-register-submit" id="role-admin-submit" type="submit">Crear rol</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <aside class="user-admin-rail">
+      <div class="user-admin-rail-head">
+        <div class="ops-eyebrow">Directorio</div>
+        <h3>Roles registrados</h3>
+        <p>Selecciona un rol para cargarlo en el formulario y ajustarlo sin salir de esta pantalla.</p>
+      </div>
+      <div class="user-admin-rail-list" id="role-admin-rail-list"></div>
+    </aside>
+  </div>
+</section>

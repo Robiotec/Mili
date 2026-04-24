@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOGIN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="icon" type="image/png" href="data:image/png;base64,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" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/web_app.css?v=__STATIC_ASSET_VERSION__" />
+</head>
+<body class="page-login">
+  <main class="login-shell">
+    <section class="login-hero" aria-label="Resumen de plataforma">
+      <div class="login-hero-top">
+        <div class="login-mark" aria-hidden="true">
+          <img
+            src="data:image/png;base64,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"
+            alt=""
+          />
+        </div>
+        <div class="login-brand">
+          <img
+          class="login-brand-logo"
+          src="data:image/png;base64,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"
+          alt="ROBIOTEC"
+          />
+          <span>Security</span>
+        </div>
+      </div>
+
+      <div class="login-copy">
+        <span class="login-kicker">Ingreso seguro</span>
+        <h1>Video, telemetría y alertas desde una solo control</h1>
+      </div>
+
+      <div class="login-hero-grid">
+        <article class="login-glance-card">
+          <span>Supervisión</span>
+          <strong>canales sincronizados</strong>
+          <p>Pensada para centros de mando con foco en lectura rápida y contexto operativo.</p>
+        </article>
+        <article class="login-glance-card">
+          <span>Telemetría</span>
+          <strong>Rastreo multi-dispositivo</strong>
+          <p>Preparado para mapear drones, vehículos y nodos móviles desde un único punto de entrada.</p>
+        </article>
+        <article class="login-glance-card">
+          <span>Eventos</span>
+          <strong>Alertas con prioridad visual</strong>
+          <p>La interfaz está pensada para reducir fricción cuando el operador entra a un turno activo.</p>
+        </article>
+      </div>
+
+      <div class="login-hero-band" aria-label="Capacidades principales">
+        <span>Monitoreo visual</span>
+        <span>Estado de misión</span>
+        <span>Respuesta operativa</span>
+      </div>
+    </section>
+
+    <section class="login-panel" aria-label="Formulario de acceso">
+      <header class="login-panel-head">
+        <div class="login-mobile-brand" aria-hidden="true">
+          <img class="login-mobile-brand-logo" src="/assets/LoogoBlanco.png" alt="ROBIOTEC" />
+        </div>
+        <div class="login-panel-badge" aria-hidden="true">
+          <img
+            src="data:image/png;base64,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"
+            alt=""
+          />
+        </div>
+        <h2>Inicia sesión</h2>
+        <p>Ingresa con tus credenciales operativas para continuar hacia la control principal.</p>
+        <p class="login-panel-copy-mobile">Accede rápido al monitoreo y sigue con tu operación.</p>
+        <div class="login-mobile-pills" aria-hidden="true">
+          <span>Cámaras</span>
+          <span>Mapa</span>
+          <span>Alertas</span>
+        </div>
+      </header>
+
+      <form class="login-form" id="login-form" novalidate>
+        <label class="login-field">
+          <span>Usuario</span>
+          <input
+            id="login-identity"
+            type="text"
+            name="identity"
+            placeholder="admin"
+            autocomplete="username"
+          />
+        </label>
+
+        <label class="login-field login-field-password">
+          <span>Contraseña</span>
+          <div class="login-password-wrap">
+            <input
+              id="login-password"
+              type="password"
+              name="password"
+              placeholder="••••••••••••"
+              autocomplete="current-password"
+            />
+            <button
+              class="login-password-toggle"
+              id="login-password-toggle"
+              type="button"
+              aria-label="Mostrar contraseña"
+              aria-pressed="false"
+              data-state="hidden"
+            >
+              <svg class="login-password-toggle-icon login-password-toggle-icon-closed" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 3 21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10.58 10.58a2 2 0 0 0 2.84 2.84" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.91c5.05 0 8.27 4.15 9 5.09a1.12 1.12 0 0 1 0 1.34 16.76 16.76 0 0 1-3.22 3.19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M6.61 6.61A16.2 16.2 0 0 0 3 10a1.12 1.12 0 0 0 0 1.34c.75 1 4 5.09 9 5.09a10.5 10.5 0 0 0 4.29-.91" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <svg class="login-password-toggle-icon login-password-toggle-icon-open" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.75 12s3.35-6 9.25-6 9.25 6 9.25 6-3.35 6-9.25 6-9.25-6-9.25-6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" />
+              </svg>
+            </button>
+          </div>
+        </label>
+
+        <p class="login-feedback" id="login-feedback" role="status" aria-live="polite"></p>
+
+        <button class="login-submit" type="submit">Entrar al sistema</button>
+      </form>
+
+      <div class="login-divider">
+        <span>Perfiles rápidos</span>
+      </div>
+
+      <div class="login-alt-grid">
+        <article class="login-alt-card">
+          <strong>Supervisor</strong>
+          <p>Acceso orientado a visión global, coordinación y seguimiento estratégico.</p>
+        </article>
+        <article class="login-alt-card">
+          <strong>Analista</strong>
+          <p>Entrada pensada para revisar evidencia, trazas de eventos y contexto técnico.</p>
+        </article>
+      </div>
+
+      <p class="login-footnote">Usa un usuario registrado en la tabla <code>usuarios</code> para ingresar.</p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const loginForm = document.getElementById("login-form");
+      const identityInput = document.getElementById("login-identity");
+      const passwordInput = document.getElementById("login-password");
+      const passwordToggleButton = document.getElementById("login-password-toggle");
+      const feedback = document.getElementById("login-feedback");
+      const submitButton = loginForm?.querySelector(".login-submit");
+
+      if (
+        !(loginForm instanceof HTMLFormElement) ||
+        !(identityInput instanceof HTMLInputElement) ||
+        !(passwordInput instanceof HTMLInputElement) ||
+        !(passwordToggleButton instanceof HTMLButtonElement) ||
+        !(feedback instanceof HTMLElement) ||
+        !(submitButton instanceof HTMLButtonElement)
+      ) {
+        return;
+      }
+
+      const defaultButtonLabel = submitButton.textContent || "Entrar al sistema";
+
+      const syncPasswordVisibility = (visible) => {
+        passwordInput.type = visible ? "text" : "password";
+        passwordToggleButton.dataset.state = visible ? "visible" : "hidden";
+        passwordToggleButton.setAttribute("aria-pressed", String(visible));
+        passwordToggleButton.setAttribute(
+          "aria-label",
+          visible ? "Ocultar contraseña" : "Mostrar contraseña"
+        );
+      };
+
+      const setFeedback = (message, state = "neutral") => {
+        feedback.textContent = message;
+        feedback.dataset.state = state;
+      };
+
+      const setSubmitting = (submitting) => {
+        submitButton.disabled = submitting;
+        submitButton.textContent = submitting ? "Validando acceso..." : defaultButtonLabel;
+      };
+
+      passwordToggleButton.addEventListener("click", () => {
+        const nextVisible = passwordInput.type !== "text";
+        syncPasswordVisibility(nextVisible);
+        passwordInput.focus();
+      });
+      syncPasswordVisibility(false);
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const identity = identityInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!identity || !password) {
+          setFeedback("Ingresa tu usuario y contraseña para continuar.", "error");
+          return;
+        }
+
+        setSubmitting(true);
+        setFeedback("Consultando credenciales en la base de datos...", "pending");
+
+        try {
+          const response = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({ identity, password })
+          });
+
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (error) {
+            data = {};
+          }
+
+          if (!response.ok) {
+            setFeedback(
+              typeof data.message === "string" && data.message
+                ? data.message
+                : "No se pudo iniciar sesión.",
+              "error"
+            );
+            return;
+          }
+
+          setFeedback("Acceso concedido. Redirigiendo a la consola...", "success");
+          window.location.assign(typeof data.redirect === "string" && data.redirect ? data.redirect : "/");
+        } catch (error) {
+          setFeedback("No fue posible comunicarse con el servidor.", "error");
+        } finally {
+          setSubmitting(false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

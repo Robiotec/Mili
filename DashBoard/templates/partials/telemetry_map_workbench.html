@@ -1,0 +1,44 @@
+<div class="map-workbench">
+  <section class="ops-card ops-card-map page-panel map-main-card">
+    <div class="ops-head">
+      <div>
+        <div class="ops-eyebrow">Mapa</div>
+        <h2>Telemetría en vivo</h2>
+      </div>
+      <div class="telemetry-map-controls">
+        <span class="telemetry-map-mode" id="telemetry-map-mode">Seguimiento automático</span>
+        <label class="telemetry-map-switch" for="telemetry-mining-toggle">
+          <input type="checkbox" id="telemetry-mining-toggle" checked>
+          <span>Capa ARCOM</span>
+        </label>
+        <label class="telemetry-map-style-wrap" for="telemetry-map-style">
+          <span>Vista</span>
+          <select class="telemetry-map-style" id="telemetry-map-style">
+            <option value="satellite">Satelital</option>
+            <option value="dark">Oscuro</option>
+            <option value="relief">Relieve</option>
+          </select>
+        </label>
+        <button class="camera-register-secondary telemetry-map-recenter" id="telemetry-map-recenter" type="button">
+          Recentrar
+        </button>
+      </div>
+    </div>
+    <div class="telemetry-map-stage">
+      <div class="telemetry-monitor-filter telemetry-map-filter">
+        <label for="telemetry-device-filter">Monitorear vehículo</label>
+        <select id="telemetry-device-filter">
+          <option value="">Todos los dispositivos</option>
+        </select>
+      </div>
+      <div class="map-canvas page-map-canvas" id="telemetry-map"></div>
+      <div class="telemetry-map-overlay-box" id="telemetry-map-overlay-box" aria-hidden="true" hidden>
+        <div class="telemetry-map-overlay-preview" id="telemetry-map-overlay-preview"></div>
+        <button class="telemetry-map-overlay-close" id="telemetry-map-overlay-close" type="button" aria-label="Cerrar vista previa">&times;</button>
+        <div class="telemetry-map-overlay-organization" id="telemetry-map-overlay-organization" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  __TELEMETRY_FOCUS_RAIL__
+</div>

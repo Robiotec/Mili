@@ -1,0 +1,528 @@
+<div class="camera-register-modal" id="camera-register-modal" hidden>
+  <div class="camera-register-modal-backdrop" id="camera-register-backdrop"></div>
+  <section class="camera-register-dialog camera-admin-management-dialog" aria-modal="true" role="dialog" aria-labelledby="camera-register-title">
+    <header class="camera-register-dialog-head">
+      <div>
+        <div class="ops-eyebrow">Centro de cámaras</div>
+        <h2 id="camera-register-title">Administrar cámaras</h2>
+        <p>
+          Registra una cámara nueva o selecciona una existente del directorio para editarla sin salir del visor principal.
+        </p>
+      </div>
+      <button class="camera-register-close" id="camera-register-close" type="button" aria-label="Cerrar administrador de cámaras">&times;</button>
+    </header>
+
+    <div class="user-admin-workbench camera-admin-modal-workbench">
+      <section class="ops-card page-panel user-admin-main-card camera-admin-modal-main-card">
+        <div class="ops-head user-admin-detail-head">
+          <div>
+            <div class="ops-eyebrow">Edición</div>
+            <h2 id="camera-admin-detail-title">Registrar nueva cámara</h2>
+            <p class="user-admin-detail-copy" id="camera-admin-detail-copy">
+              Completa el formulario para crear una cámara nueva. Si seleccionas una del panel derecho, aquí podrás actualizarla o eliminarla.
+            </p>
+          </div>
+        </div>
+
+        <form class="user-admin-form" id="camera-admin-form">
+          <div class="user-admin-form-grid camera-admin-form-grid">
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">1</span>
+                <span>Nombre</span>
+              </span>
+              <input
+                id="camera-admin-name"
+                name="nombre"
+                type="text"
+                maxlength="120"
+                placeholder="cam.patio.norte"
+                autocomplete="off"
+                required
+              />
+              <span class="camera-register-help">Usa un nombre corto y claro para ubicar rápido la cámara dentro del directorio.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">2</span>
+                <span>Descripción</span>
+              </span>
+              <textarea
+                id="camera-admin-description"
+                name="descripcion"
+                rows="3"
+                maxlength="600"
+                placeholder="Describe el punto de observación o el uso operativo de esta cámara."
+              ></textarea>
+              <span class="camera-register-help">Opcional. Úsala para dejar contexto operativo sobre cobertura, ángulo o uso esperado.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">3</span>
+                <span>Organización</span>
+              </span>
+              <select id="camera-admin-organization" name="organizacion_id" required>
+                <option value="">Selecciona una organización</option>
+              </select>
+              <span class="camera-register-help">La cámara siempre quedará asociada a una organización visible para tu sesión actual.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">4</span>
+                <span>Usuario a cargo</span>
+              </span>
+              <select id="camera-admin-owner" name="propietario_usuario_id" required>
+                <option value="">Selecciona un responsable</option>
+              </select>
+              <span class="camera-register-help">Solo podrás asignar responsables dentro de la jerarquía visible para tu rol.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">5</span>
+                <span>Tipo de cámara</span>
+              </span>
+              <select id="camera-admin-type" name="tipo_camara_codigo" required>
+                <option value="">Selecciona el tipo</option>
+              </select>
+              <span class="camera-register-help" id="camera-admin-type-help">Si es fija, tendrás que registrar su ubicación. Si es móvil, tendrás que enlazarla a un vehículo.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-protocol-wrap" hidden>
+              <span class="camera-register-label">
+                <span class="camera-register-step">6</span>
+                <span>Protocolo</span>
+              </span>
+              <select id="camera-admin-protocol" name="protocolo_codigo" required>
+                <option value="">Selecciona el protocolo</option>
+              </select>
+              <span class="camera-register-help">La aplicación asigna el protocolo automáticamente según el tipo de cámara y el flujo configurado.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-stream-url-wrap">
+              <span class="camera-register-label">
+                <span class="camera-register-step">7</span>
+                <span>URL para visor</span>
+              </span>
+              <input
+                id="camera-admin-stream-url"
+                name="url_stream"
+                type="url"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Se completará automáticamente con el visor WebRTC"
+              />
+              <span class="camera-register-help" id="camera-admin-stream-url-help">
+                Es el enlace web que abre el visor. Para MediaMTX normalmente se genera como WebRTC: http://servidor:8989/camara.
+              </span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-rtsp-url-wrap" hidden>
+              <span class="camera-register-label">
+                <span class="camera-register-step">7A</span>
+                <span>URL RTSP manual</span>
+              </span>
+              <input
+                id="camera-admin-rtsp-url"
+                name="url_rtsp"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="rtsp://usuario:clave@ip:554/..."
+              />
+              <span class="camera-register-help" id="camera-admin-rtsp-url-help">Usa esta opción solo si elegiste “Personalizado” y ya tienes la URL RTSP completa.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">8</span>
+                <span>Código único</span>
+              </span>
+              <input
+                id="camera-admin-code"
+                name="codigo_unico"
+                type="text"
+                maxlength="100"
+                autocomplete="off"
+                placeholder="RB-CAM-001"
+              />
+              <span class="camera-register-help">Opcional. Te sirve como identificador técnico, patrimonial o de inventario.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-brand-wrap">
+              <span class="camera-register-label">
+                <span class="camera-register-step">9</span>
+                <span>Fabricante RTSP</span>
+              </span>
+              <select
+                id="camera-admin-brand"
+                name="marca"
+              >
+                <option value="">Selecciona una opción</option>
+              </select>
+              <span class="camera-register-help" id="camera-admin-brand-help">Para cámaras fijas o PTZ puedes usar Hikvision, Dahua o la opción Personalizado.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-model-wrap">
+              <span class="camera-register-label">
+                <span class="camera-register-step">10</span>
+                <span>Modelo</span>
+              </span>
+              <input
+                id="camera-admin-model"
+                name="modelo"
+                type="text"
+                maxlength="80"
+                autocomplete="off"
+                placeholder="DS-2CD2047G2-L"
+              />
+              <span class="camera-register-help">Opcional. Ayuda a distinguir cámaras del mismo fabricante.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-serial-wrap">
+              <span class="camera-register-label">
+                <span class="camera-register-step">11</span>
+                <span>Número de serie</span>
+              </span>
+              <input
+                id="camera-admin-serial"
+                name="numero_serie"
+                type="text"
+                maxlength="120"
+                autocomplete="off"
+                placeholder="SN-2026-0001"
+              />
+              <span class="camera-register-help">Opcional. Úsalo si quieres enlazar la cámara a inventario físico o soporte.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-stream-user-wrap">
+              <span class="camera-register-label">
+                <span class="camera-register-step">12</span>
+                <span>Usuario RTSP</span>
+              </span>
+              <input
+                id="camera-admin-stream-user"
+                name="usuario_stream"
+                type="text"
+                maxlength="120"
+                autocomplete="off"
+                placeholder="operador_cam"
+              />
+              <span class="camera-register-help">Usuario de acceso RTSP para cámaras fijas o PTZ.</span>
+            </label>
+
+            <label class="camera-register-field" id="camera-admin-stream-password-wrap">
+              <span class="camera-register-label">
+                <span class="camera-register-step">13</span>
+                <span>Clave RTSP</span>
+              </span>
+              <input
+                id="camera-admin-stream-password"
+                name="password_stream"
+                type="password"
+                maxlength="120"
+                autocomplete="new-password"
+                placeholder="Deja en blanco para conservar la actual al editar"
+              />
+              <span class="camera-register-help">Si editas una cámara y dejas este campo vacío, la clave actual se conserva.</span>
+            </label>
+
+            <section class="camera-admin-rtsp-builder" id="camera-admin-rtsp-builder" hidden aria-labelledby="camera-admin-rtsp-title">
+              <div class="camera-admin-rtsp-head">
+                <div>
+                  <strong id="camera-admin-rtsp-title">Asistente RTSP por marca</strong>
+                  <p id="camera-admin-rtsp-copy">Completa usuario, clave, canal y perfil. La URL RTSP se generará automáticamente al guardar.</p>
+                </div>
+                <button class="camera-register-secondary" id="camera-admin-rtsp-generate" type="button">Generar URL RTSP</button>
+              </div>
+              <div class="camera-admin-rtsp-grid">
+                <label class="camera-register-field">
+                  <span>IP o host</span>
+                  <input
+                    id="camera-admin-rtsp-ip"
+                    name="rtsp_host"
+                    type="text"
+                    maxlength="255"
+                    autocomplete="off"
+                    placeholder="192.168.1.64"
+                  />
+                  <span class="camera-register-help">Dirección IP o DNS de la cámara.</span>
+                </label>
+
+                <label class="camera-register-field">
+                  <span>Puerto RTSP</span>
+                  <input
+                    id="camera-admin-rtsp-port"
+                    name="rtsp_port"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    step="1"
+                    placeholder="554"
+                  />
+                  <span class="camera-register-help">Déjalo en 554 si la cámara usa el puerto RTSP por defecto.</span>
+                </label>
+
+                <label class="camera-register-field" id="camera-admin-rtsp-channel-wrap" hidden>
+                  <span>Canal</span>
+                  <input
+                    id="camera-admin-rtsp-channel"
+                    name="rtsp_channel"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    step="1"
+                    placeholder="1"
+                  />
+                  <span class="camera-register-help">Canal de video que corresponde a la cámara o DVR.</span>
+                </label>
+
+                <label class="camera-register-field" id="camera-admin-rtsp-substream-wrap" hidden>
+                  <span>Tipo de transmisión</span>
+                  <select id="camera-admin-rtsp-substream" name="rtsp_substream">
+                    <option value="false">Mainstream</option>
+                    <option value="true">Substream</option>
+                  </select>
+                  <span class="camera-register-help">Elige si vas a usar el flujo principal o el substream.</span>
+                </label>
+
+                <label class="camera-register-field" id="camera-admin-rtsp-path-wrap" hidden>
+                  <span>Ruta personalizada</span>
+                  <input
+                    id="camera-admin-rtsp-path"
+                    name="rtsp_path"
+                    type="text"
+                    maxlength="255"
+                    autocomplete="off"
+                    placeholder="live/ch00_1"
+                  />
+                  <span class="camera-register-help">Escribe solo la ruta después del host, sin repetir `rtsp://`.</span>
+                </label>
+              </div>
+              <div class="camera-admin-rtsp-preview" id="camera-admin-rtsp-preview">
+                La URL generada aparecerá en el campo “URL RTSP”.
+              </div>
+            </section>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">14</span>
+                <span>Inferencia</span>
+              </span>
+              <select id="camera-admin-inference-enabled" name="hacer_inferencia" required>
+                <option value="false">Sin inferencia</option>
+                <option value="true">Con inferencia</option>
+              </select>
+              <span class="camera-register-help">Actívala si esta cámara debe trabajar con inferencia. Si la dejas desactivada, quedará solo con el stream normal.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">15</span>
+                <span>Estado</span>
+              </span>
+              <select id="camera-admin-active" name="activa" required>
+                <option value="true">Cámara activa</option>
+                <option value="false">Cámara inactiva</option>
+              </select>
+              <span class="camera-register-help">Las cámaras inactivas siguen en la base, pero desaparecen del visor y del mapa operativo.</span>
+            </label>
+          </div>
+
+          <div class="camera-admin-conditional-grid" id="camera-admin-static-fields">
+            <div class="camera-admin-map-trigger">
+              <div class="camera-admin-map-trigger-head">
+                <div>
+                  <strong>Ubicación de cámara fija</strong>
+                  <p>Abre el mapa, haz clic en el punto exacto y usa esa selección para completar la ubicación GPS.</p>
+                </div>
+                <button class="camera-register-secondary" id="camera-admin-map-open" type="button">
+                  Seleccionar en el mapa
+                </button>
+              </div>
+              <div class="camera-admin-map-summary" id="camera-admin-map-summary">
+                Aún no se ha seleccionado una ubicación en el mapa.
+              </div>
+            </div>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">15</span>
+                <span>Latitud</span>
+              </span>
+              <input
+                id="camera-admin-lat"
+                name="latitud"
+                type="number"
+                step="any"
+                min="-90"
+                max="90"
+                placeholder="-2.170998"
+              />
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">16</span>
+                <span>Longitud</span>
+              </span>
+              <input
+                id="camera-admin-lon"
+                name="longitud"
+                type="number"
+                step="any"
+                min="-180"
+                max="180"
+                placeholder="-79.922359"
+              />
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">17</span>
+                <span>Altitud</span>
+              </span>
+              <input
+                id="camera-admin-altitude"
+                name="altitud_m"
+                type="number"
+                step="any"
+                placeholder="15"
+              />
+              <span class="camera-register-help">Opcional. Útil si la cámara está en un punto elevado o una torre.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">18</span>
+                <span>Dirección</span>
+              </span>
+              <input
+                id="camera-admin-address"
+                name="direccion"
+                type="text"
+                maxlength="300"
+                autocomplete="off"
+                placeholder="Av. Principal y Calle Secundaria"
+              />
+              <span class="camera-register-help">Opcional. Sirve para ubicar físicamente la cámara fija dentro del terreno o la ciudad.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">19</span>
+                <span>Referencia</span>
+              </span>
+              <textarea
+                id="camera-admin-reference"
+                name="referencia"
+                rows="2"
+                maxlength="300"
+                placeholder="Sobre el acceso norte, mirando hacia el portón principal."
+              ></textarea>
+              <span class="camera-register-help">Opcional. Deja una referencia breve para mantenimiento o instalación.</span>
+            </label>
+          </div>
+
+          <div class="camera-admin-conditional-grid" id="camera-admin-vehicle-fields" hidden>
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">15</span>
+                <span>Vehículo asociado</span>
+              </span>
+              <select id="camera-admin-vehicle" name="vehiculo_id">
+                <option value="">Selecciona un vehículo</option>
+              </select>
+              <span class="camera-register-help">La cámara móvil se enlazará al vehículo elegido para usar su posición actual cuando exista.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">16</span>
+                <span>Posición en el vehículo</span>
+              </span>
+              <input
+                id="camera-admin-vehicle-position"
+                name="vehiculo_posicion"
+                type="text"
+                maxlength="50"
+                autocomplete="off"
+                placeholder="frontal, lateral derecho, torreta..."
+              />
+              <span class="camera-register-help">Opcional. Sirve para saber dónde está montada la cámara dentro del vehículo.</span>
+            </label>
+          </div>
+
+          <div class="user-admin-note">
+            __CAMERA_ADMIN_ACCESS_NOTE__
+          </div>
+
+          <div class="camera-register-actions">
+            <div class="ops-note camera-register-feedback user-admin-feedback" id="camera-admin-feedback" hidden></div>
+            <div class="camera-admin-action-intro">
+              <span class="camera-admin-action-kicker">Acciones rápidas</span>
+              <p class="camera-admin-action-copy">
+                Inicia una cámara estándar o una R-BOX sin salir del directorio y mantén el formulario listo para guardar.
+              </p>
+            </div>
+            <div class="camera-admin-action-cluster">
+              <div class="camera-admin-action-group" aria-label="Acciones de creación de cámaras">
+                <button class="camera-admin-quick-action camera-admin-quick-action-rbox" id="camera-admin-rbox" type="button">
+                  <span class="camera-admin-quick-action-title">Crear R-BOX</span>
+                  <span class="camera-admin-quick-action-note">Base ROBIOTEC</span>
+                </button>
+                <button class="camera-admin-quick-action" id="camera-admin-reset" type="button">
+                  <span class="camera-admin-quick-action-title">Nueva cámara</span>
+                  <span class="camera-admin-quick-action-note">Formulario limpio</span>
+                </button>
+                <button class="camera-register-submit camera-admin-submit-primary" id="camera-admin-submit" type="submit">Crear cámara</button>
+              </div>
+              <button class="camera-register-secondary camera-register-danger camera-admin-delete-action" id="camera-admin-delete" type="button" hidden>Eliminar cámara</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <aside class="user-admin-rail">
+        <div class="user-admin-rail-head">
+          <div class="ops-eyebrow">Directorio</div>
+          <h3>Cámaras registradas</h3>
+          <p>Selecciona una cámara para cargarla en el formulario y administrarla sin salir de este modal.</p>
+        </div>
+        <div class="user-admin-rail-list" id="camera-admin-rail-list"></div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<div class="camera-register-modal" id="camera-admin-map-modal" hidden>
+  <div class="camera-register-modal-backdrop" id="camera-admin-map-backdrop"></div>
+  <section class="camera-register-dialog camera-admin-map-dialog" aria-modal="true" role="dialog" aria-labelledby="camera-admin-map-title">
+    <header class="camera-register-dialog-head">
+      <div>
+        <div class="ops-eyebrow">Mapa de ubicación</div>
+        <h2 id="camera-admin-map-title">Selecciona dónde quedará instalada la cámara</h2>
+        <p>
+          Haz clic sobre el mapa satelital para fijar la posición de la cámara estática. Cuando confirmes, las coordenadas se copiarán al formulario.
+        </p>
+      </div>
+      <button class="camera-register-close" id="camera-admin-map-close" type="button" aria-label="Cerrar selector de ubicación">&times;</button>
+    </header>
+
+    <div class="camera-register-map-stack">
+      <div class="camera-register-map-head">
+        <strong>Ubicación seleccionada</strong>
+        <span id="camera-admin-map-location">Haz clic sobre el mapa para elegir la posición exacta.</span>
+      </div>
+      <div class="camera-register-map" id="camera-admin-map"></div>
+    </div>
+
+    <div class="camera-register-action-row">
+      <button class="camera-register-secondary" id="camera-admin-map-cancel" type="button">Cancelar</button>
+      <button class="camera-register-submit" id="camera-admin-map-apply" type="button">Usar esta ubicación</button>
+    </div>
+  </section>
+</div>

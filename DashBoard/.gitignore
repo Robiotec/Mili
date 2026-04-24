@@ -1,0 +1,33 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+VIDEOS PRUEBA/
+PLACAS/*
+Rostros/*
+
+
+# Nueva Restructuración
+*.mov
+*.MOV
+src/video/
+src/img/
+
+# Ignorar videos pesados
+src/video/
+*.mp4
+*.MP4
+*.mov
+*.MOV
+
+# Telemetría
+telemetria_raw.jsonl
+*.jsonl
+logs/
+data/

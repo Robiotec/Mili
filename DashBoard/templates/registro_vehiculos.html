@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROBIOTEC Registro de Vehículos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="icon" type="image/png" href="data:image/png;base64,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" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/web_app.css?v=__STATIC_ASSET_VERSION__" />
+</head>
+<body class="page-vehicle-registry">
+  <div class="app-shell is-sidebar-collapsed">
+    __INCLUDE:partials/app_sidebar.html__
+
+    <main class="app-main">
+      <header class="top top-page top-page-events" id="dashboard-top">
+        <div class="heading">
+          <div class="eyebrow">Control Vehicular</div>
+          <h2 class="title">Registro de Vehículos</h2>
+        </div>
+        
+        <div class="page-hero-strip" aria-label="Resumen del registro">
+          <article class="page-hero-card">
+            <span class="page-hero-kicker">Registros</span>
+            <strong id="vehicle-registry-total">--</strong>
+          </article>
+          <article class="page-hero-card">
+            <span class="page-hero-kicker">Con cámaras</span>
+            <strong id="vehicle-registry-cameras">--</strong>
+          </article>
+          <article class="page-hero-card">
+            <span class="page-hero-kicker">Último registro</span>
+            <strong id="vehicle-registry-updated">--</strong>
+          </article>
+        </div>
+      </header>
+
+      <div class="wrap">
+        <section class="page-section-shell page-vehicle-registry-shell">
+          <div class="page-section-head">
+            <div class="camera-page-actions">
+              <button class="camera-register-open" id="vehicle-register-open" type="button">
+                Registrar nuevo vehículo
+              </button>
+            </div>
+          </div>
+
+          <div class="vehicle-registry-workbench">
+            <section class="ops-card page-panel vehicle-registry-main-card">
+              <div class="ops-head vehicle-registry-detail-head">
+                <div>
+                  <div class="ops-eyebrow">Detalle</div>
+                  <h2 id="vehicle-registry-detail-title">Selecciona un registro</h2>
+                  <p class="vehicle-registry-detail-copy" id="vehicle-registry-detail-copy">
+                    Haz clic en un dron o auto del panel derecho para ver su información completa aquí.
+                  </p>
+                </div>
+              </div>
+              <div class="vehicle-registry-detail" id="vehicle-registry-detail"></div>
+            </section>
+
+            <aside class="vehicle-registry-rail">
+              <div class="vehicle-registry-rail-list" id="vehicle-registry-rail-list"></div>
+            </aside>
+          </div>
+        </section>
+
+        <div class="errors">__ERROR_BLOCK__</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="camera-register-modal" id="vehicle-register-modal" hidden>
+    <div class="camera-register-modal-backdrop" id="vehicle-register-backdrop"></div>
+    <section
+      class="camera-register-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vehicle-register-title"
+    >
+      <header class="camera-register-dialog-head">
+        <div>
+          <div class="ops-eyebrow">Alta de vehículo</div>
+          <h2 id="vehicle-register-title">Registrar nuevo vehículo</h2>
+          <p id="vehicle-register-copy">Selecciona si quieres registrar un dron o un automóvil y define si su telemetría llegará por API o si solo deseas guardarlo como ficha operativa.</p>
+        </div>
+        <button class="camera-register-close" id="vehicle-register-close" type="button" aria-label="Cerrar modal">
+          ×
+        </button>
+      </header>
+
+      <form class="camera-register-form" id="vehicle-register-form">
+        <div class="camera-register-grid">
+          <div class="camera-register-stack">
+            <div class="camera-register-intro">
+              <strong>Registro manual</strong>
+              <p>Este formulario ahora guarda vehículos reales en PostgreSQL, enlazando organización, propietario, telemetría y las cámaras que viajarán montadas en la unidad.</p>
+            </div>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">1</span>
+                <span>Organización</span>
+              </span>
+              <select id="vehicle-register-organization" name="organizacion_id" required></select>
+              <span class="camera-register-help">El vehículo quedará dentro de esta organización y heredará su alcance operativo.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">2</span>
+                <span>Propietario</span>
+              </span>
+              <select id="vehicle-register-owner" name="propietario_usuario_id" required></select>
+              <span class="camera-register-help">Solo podrás asignar usuarios que estén dentro de tu jerarquía operativa.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">3</span>
+                <span>Tipo de vehículo</span>
+              </span>
+              <select id="vehicle-register-type" name="vehicle_type" required>
+                <option value="drone_robiotec">Dron Robiotec</option>
+                <option value="drone_dji">Dron DJI</option>
+                <option value="auto">Vehículo terrestre</option>
+              </select>
+              <span class="camera-register-help" id="vehicle-register-type-help">Elige el tipo real del vehículo según el catálogo de la base de datos.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">4</span>
+                <span>Nombre o alias</span>
+              </span>
+              <input
+                id="vehicle-register-label"
+                name="label"
+                type="text"
+                placeholder="Unidad Alpha"
+                autocomplete="off"
+                required
+              />
+              <span class="camera-register-help">Usa un nombre corto y reconocible para el operador.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">5</span>
+                <span id="vehicle-register-identifier-label">Serie o matrícula</span>
+              </span>
+              <input
+                id="vehicle-register-identifier"
+                name="identifier"
+                type="text"
+                placeholder="DRN-001"
+                autocomplete="off"
+                required
+              />
+              <span class="camera-register-help" id="vehicle-register-identifier-help">Para drones puedes usar serie, matrícula o código interno.</span>
+            </label>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">6</span>
+                <span>Modo de telemetría</span>
+              </span>
+              <select id="vehicle-register-telemetry-mode" name="telemetry_mode" required>
+                <option value="manual">Sin telemetría</option>
+                <option value="api">API GPS</option>
+              </select>
+              <span class="camera-register-help" id="vehicle-register-telemetry-help">Elige cómo quieres enlazar la posición del vehículo dentro del mapa.</span>
+            </label>
+
+            <div class="vehicle-register-drone-grid" id="vehicle-register-api-fields" hidden>
+              <label class="camera-register-field">
+                <span class="camera-register-label">
+                  <span class="camera-register-step">7</span>
+                  <span>ID en la API</span>
+                </span>
+                <input
+                  id="vehicle-register-api-device-id"
+                  name="api_device_id"
+                  type="text"
+                  placeholder="drone"
+                  autocomplete="off"
+                />
+                <span class="camera-register-help">Debe coincidir con el <code>id</code> que devuelve API CENTRAL en <code>/telemetry/{id}/gps</code>. Si lo dejas vacío, para drones se usará <code>drone</code>.</span>
+              </label>
+            </div>
+
+            <label class="camera-register-field">
+              <span class="camera-register-label">
+                <span class="camera-register-step">8</span>
+                <span>Observaciones</span>
+              </span>
+              <textarea
+                id="vehicle-register-notes"
+                name="notes"
+                rows="4"
+                placeholder="Ejemplo: dron de patrullaje, color gris, asignado al turno nocturno."
+              ></textarea>
+              <span class="camera-register-help">Campo opcional para notas operativas, color, responsable o particularidades.</span>
+            </label>
+
+            <section class="vehicle-register-camera-shell">
+              <div class="camera-register-intro">
+                <strong>Cámaras asociadas</strong>
+                <p>Selecciona las cámaras móviles que quedarán montadas en este vehículo. Si una cámara ya estaba en otra unidad, se reasignará al guardar.</p>
+              </div>
+              <div class="vehicle-register-camera-list" id="vehicle-register-camera-list"></div>
+            </section>
+          </div>
+
+          <div class="camera-register-map-stack">
+            <div class="camera-register-intro">
+              <strong>Guía rápida</strong>
+              <p id="vehicle-register-type-note">Al registrar un vehículo puedes dejarlo como ficha operativa o enlazarlo a una fuente de telemetría por API.</p>
+            </div>
+
+            <div class="camera-register-guide">
+              <article class="camera-register-guide-item">
+                <strong>Dron</strong>
+                <p>Úsalo para aeronaves no tripuladas y equipos de vuelo. Puedes consumir su posición desde una API externa que entregue <code>id</code>, latitud y longitud.</p>
+              </article>
+              <article class="camera-register-guide-item">
+                <strong>Automóvil</strong>
+                <p>Úsalo para carros, camionetas o patrullas. Puedes dejarlo como ficha manual o conectarlo a una API GPS para verlo en el mapa.</p>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="camera-register-actions">
+          <div class="ops-note camera-register-feedback" id="vehicle-register-feedback" hidden></div>
+          <div class="camera-register-action-row">
+            <button class="camera-register-secondary camera-register-danger" id="vehicle-register-delete" type="button" hidden>Eliminar vehículo</button>
+            <button class="camera-register-secondary" id="vehicle-register-cancel" type="button">Cancelar</button>
+            <button class="camera-register-submit" id="vehicle-register-submit" type="submit">Guardar vehículo</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    window.__WEB_APP_CONFIG__ = {
+      cameras: __CAMERA_ITEMS_JSON__,
+      devices: __DEVICE_CATALOG_JSON__,
+      defaultCamera: __DEFAULT_CAMERA_JSON__,
+      staticAssetVersion: "__STATIC_ASSET_VERSION__",
+      telemetryRefreshMs: __TELEMETRY_REFRESH_MS__,
+    };
+  </script>
+  <script src="/static/web_app.js?v=__STATIC_ASSET_VERSION__"></script>
+</body>
+</html>

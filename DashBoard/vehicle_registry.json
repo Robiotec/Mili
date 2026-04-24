@@ -1,0 +1,28 @@
+{
+  "entries": [
+    {
+      "registration_id": "df2886cb-d306-4e43-b61e-759488ce58a0",
+      "created_ts": 1774557827.1975405,
+      "updated_ts": 1774557827.1975405,
+      "vehicle_type": "automovil",
+      "label": "Rayo McQueen",
+      "identifier": "ABC-002",
+      "notes": "Prueba del GPS del Carro",
+      "telemetry_mode": "api",
+      "api_base_url": "",
+      "api_device_id": "ROBIOCAR-001"
+    },
+    {
+      "registration_id": "0e2c0d8b-b81f-4ced-932e-821d7db3028e",
+      "created_ts": 1773934155.6499093,
+      "updated_ts": 1773934155.6499093,
+      "vehicle_type": "dron",
+      "label": "DRON-1",
+      "identifier": "drone",
+      "notes": "Prueba 1 de un dron por API",
+      "telemetry_mode": "api",
+      "api_base_url": "",
+      "api_device_id": "drone"
+    }
+  ]
+}
