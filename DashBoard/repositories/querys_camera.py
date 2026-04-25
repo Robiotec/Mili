@@ -658,10 +658,14 @@ class CameraRepository:
         normalized_creator_user_id = self._normalize_positive_int(created_by_user_id, error_code="invalid_creator_user_id")
         normalized_name = self._normalize_required_text(name, max_length=120, error_code="invalid_camera_name")
         normalized_description = self._normalize_optional_text(description, max_length=4000)
-        normalized_stream_url = self._normalize_stream_url(stream_url)
+        normalized_unique_code = self._normalize_optional_text(unique_code, max_length=100)
+        # Auto-generate stream_url if not provided and unique_code is present
+        if not stream_url and normalized_unique_code:
+            normalized_stream_url = f"http://45.32.167.86:8989/{normalized_unique_code}"
+        else:
+            normalized_stream_url = self._normalize_stream_url(stream_url)
         normalized_rtsp_url = self._normalize_rtsp_url(rtsp_url)
         normalized_fixed_camera_ip = self._normalize_camera_ip(fixed_camera_ip, normalized_rtsp_url)
-        normalized_unique_code = self._normalize_optional_text(unique_code, max_length=100)
         normalized_brand = self._normalize_optional_text(brand, max_length=80)
         normalized_model = self._normalize_optional_text(model, max_length=80)
         normalized_serial_number = self._normalize_optional_text(serial_number, max_length=120)

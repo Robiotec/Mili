@@ -26,15 +26,6 @@ class SSHCommandError(SSHError):
     """Error al ejecutar comando remoto por SSH."""
 
 
-DEFAULT_CROPS_SSH_HOST = "100.93.62.24"
-DEFAULT_CROPS_SSH_USER = "robiotec"
-DEFAULT_CROPS_SSH_PORT = 22
-DEFAULT_CROPS_SSH_KEY_PATH = str(Path.home() / ".ssh" / "id_ed25519")
-DEFAULT_CROPS_REMOTE_MANIFEST_PATH = (
-    "/home/robiotec/Documents/VICTOR/Object_Recognition/unified/results/manifest.jsonl"
-)
-
-
 def _env_int(name: str, default: int) -> int:
     try:
         return int(os.getenv(name, str(default)))
@@ -43,10 +34,7 @@ def _env_int(name: str, default: int) -> int:
 
 
 def get_default_crops_remote_manifest_path() -> str:
-    return (
-        os.getenv("CROPS_REMOTE_MANIFEST_PATH", DEFAULT_CROPS_REMOTE_MANIFEST_PATH).strip()
-        or DEFAULT_CROPS_REMOTE_MANIFEST_PATH
-    )
+    return os.getenv("CROPS_REMOTE_MANIFEST_PATH", "").strip()
 
 
 def build_default_crops_ssh_config(
@@ -57,25 +45,14 @@ def build_default_crops_ssh_config(
     retry_delay: Optional[int] = None,
     log_level: int = logging.INFO,
 ) -> "SSHConfig":
-    """
-    Construye la configuración SSH base para leer los crops remotos.
-    Se puede sobrescribir con variables CROPS_SSH_* sin tocar código.
-    """
-    host = (
-        os.getenv("CROPS_SSH_HOST", DEFAULT_CROPS_SSH_HOST).strip()
-        or DEFAULT_CROPS_SSH_HOST
-    )
-    user = (
-        os.getenv("CROPS_SSH_USER", DEFAULT_CROPS_SSH_USER).strip()
-        or DEFAULT_CROPS_SSH_USER
-    )
-    key_path = os.getenv("CROPS_SSH_KEY_PATH", DEFAULT_CROPS_SSH_KEY_PATH).strip()
+    """Construye la configuración SSH base para leer los crops remotos desde .env (CROPS_SSH_*)."""
+    key_path = os.getenv("CROPS_SSH_KEY_PATH", "").strip()
     if key_path:
         key_path = str(Path(key_path).expanduser())
     return SSHConfig(
-        host=host,
-        user=user,
-        port=_env_int("CROPS_SSH_PORT", DEFAULT_CROPS_SSH_PORT),
+        host=os.getenv("CROPS_SSH_HOST", "").strip(),
+        user=os.getenv("CROPS_SSH_USER", "").strip(),
+        port=_env_int("CROPS_SSH_PORT", 22),
         key_path=key_path or None,
         connect_timeout=(
             connect_timeout

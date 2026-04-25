@@ -30,8 +30,8 @@ class ArcomConcessionStore:
                 c.dpa_descan,
                 c.dpa_despar,
                 c.geom
-            FROM rtree_concesiones_geom AS r
-            JOIN concesiones AS c
+            FROM rtree_catastro_minero_geom AS r
+            JOIN catastro_minero AS c
               ON c.fid = r.id
             WHERE r.minx <= ?
               AND r.maxx >= ?
@@ -72,8 +72,8 @@ class ArcomConcessionStore:
                 c.dpa_descan,
                 c.dpa_despar,
                 c.geom
-            FROM rtree_concesiones_geom AS r
-            JOIN concesiones AS c
+            FROM rtree_catastro_minero_geom AS r
+            JOIN catastro_minero AS c
               ON c.fid = r.id
             WHERE r.minx <= ?
               AND r.maxx >= ?
@@ -131,7 +131,7 @@ def _serialize_concession(row: sqlite3.Row, geometry: dict[str, Any] | None) -> 
         "codigo_catastral": row["nam"],
         "nombre_concesion": row["com"],
         "estado_actual": row["eac"],
-        "titular": row["ttm"],
+        "empresa": (row["ttm"] or "").strip() or None,
         "fase_recurso_mineral": row["frm"],
         "tipo_mineral": row["tipo_mineral"],
         "regimen": row["rgm"],

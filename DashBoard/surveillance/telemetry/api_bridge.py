@@ -137,10 +137,14 @@ class _ApiTelemetryBridgeWorker:
         if expected_id and received_id and expected_id.casefold() != received_id.casefold():
             return
 
+        raw = getattr(gps, "_raw", {}) if hasattr(gps, "_raw") else {}
+
         self.telemetry_service.update(
             entry.identifier,
             lat=float(gps.lat),
             lon=float(gps.lon),
+            altitude=_safe_float(raw.get("altitude")),
+            speed=_safe_float(raw.get("speed")),
             heading=_safe_float(getattr(gps, "heading", None)),
             device_status="online",
             source_ts=_parse_source_timestamp(getattr(gps, "timestamp", "")),
@@ -152,6 +156,14 @@ class _ApiTelemetryBridgeWorker:
                 "gps_api_base_url": str(entry.api_base_url or "").strip(),
                 "api_device_id": expected_id,
                 "telemetry_notes": str(entry.notes or "").strip(),
+                "battery_remaining_pct": raw.get("battery_remaining_pct"),
+                "battery_voltage_v": raw.get("battery_voltage_v"),
+                "current_battery_a": raw.get("current_battery_a"),
+                "armed": raw.get("armed"),
+                "mode": raw.get("mode"),
+                "system_status_text": raw.get("system_status_text"),
+                "gps_fix_type": raw.get("gps_fix_type"),
+                "satellites_visible": raw.get("satellites_visible"),
             },
         )
 

@@ -4,27 +4,47 @@ from typing import Optional
 
 router = APIRouter()
 
-# Memoria volátil: último estado GPS por vehículo
 gps_data_store: dict[str, dict] = {}
 
+
 class GPSPayload(BaseModel):
+    # Posición
     lat: Optional[float] = None
     lon: Optional[float] = None
     heading: Optional[float] = None
     timestamp: Optional[str] = None
+    altitude: Optional[float] = None
+    speed: Optional[float] = None
+    # Batería
+    battery_remaining_pct: Optional[float] = None
+    battery_voltage_v: Optional[float] = None
+    current_battery_a: Optional[float] = None
+    # Estado del vehículo
+    armed: Optional[bool] = None
+    mode: Optional[str] = None
+    system_status_text: Optional[str] = None
+    # GPS
+    gps_fix_type: Optional[int] = None
+    satellites_visible: Optional[int] = None
+
 
 @router.get("/")
 def home():
     return {"status": "online", "vehicles": list(gps_data_store.keys())}
 
-# Endpoint para la Raspberry Pi
+
 @router.post("/{vehicle_id}/update-gps")
 async def update_gps(vehicle_id: str, data: GPSPayload):
-    gps_data_store[vehicle_id] = {"vehicle_id": vehicle_id, **data.model_dump()}
-    print(f"Recibido [{vehicle_id}]: {gps_data_store[vehicle_id]}")
+    gps_data_store[vehicle_id] = {
+        "vehicle_id": vehicle_id,
+        **data.model_dump(exclude_none=False),
+    }
+    print(f"[{vehicle_id}] lat={data.lat} lon={data.lon} alt={data.altitude}m "
+          f"spd={data.speed}km/h hdg={data.heading}° bat={data.battery_remaining_pct}% "
+          f"armed={data.armed} mode={data.mode} sats={data.satellites_visible}")
     return {"message": "Data received", "vehicle_id": vehicle_id}
 
-# Endpoint para consultar ubicación de un vehículo
+
 @router.get("/{vehicle_id}/gps")
 async def get_gps(vehicle_id: str):
     if vehicle_id not in gps_data_store:

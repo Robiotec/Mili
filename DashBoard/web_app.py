@@ -79,6 +79,7 @@ TELEMETRY_REFRESH_SECONDS = max(float(os.getenv("TELEMETRY_REFRESH_SECONDS", "1"
 ARCOM_GPKG_PATH = Path(os.getenv("ARCOM_GPKG_PATH", "/home/robiotec/ARCOM/arcom_catastro.gpkg")).expanduser()
 ARCOM_MAX_FEATURES_PER_REQUEST = max(1, int(os.getenv("ARCOM_MAX_FEATURES_PER_REQUEST", "120")))
 ARCOM_ENABLED = os.getenv("ARCOM_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+ARCOM_MIN_ZOOM = max(1, min(24, int(os.getenv("ARCOM_MIN_ZOOM", "11"))))
 ARCOM_CONCESSION_STORE = ArcomConcessionStore(ARCOM_GPKG_PATH)
 CROPS_MANIFEST_CACHE_TTL_SEC = max(float(os.getenv("CROPS_MANIFEST_CACHE_TTL_SEC", "30")), 0.0)
 PUBLIC_PATHS = frozenset({"/login", "/api/login", "/api/logout"})
@@ -1922,7 +1923,11 @@ async def handle_plate_crop_image(request: web.Request) -> web.Response:
 
 async def handle_mapa(request: web.Request) -> web.Response:
     APP_CONTEXT.ensure_initialized()
-    return _html_response("mapa.html", request=request)
+    return _html_response(
+        "mapa.html",
+        request=request,
+        replacements={"__ARCOM_MIN_ZOOM__": str(ARCOM_MIN_ZOOM)},
+    )
 
 
 async def handle_eventos(request: web.Request) -> web.Response:

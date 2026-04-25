@@ -1,0 +1,30 @@
+{
+  "layer_url": "https://geovisorm.controlrecursosyenergia.gob.ec/arcgis/rest/services/Concesiones/CatastroMineroNacional_PSAD56/MapServer/0",
+  "expected_count_server": 6334,
+  "ids_received": 6334,
+  "downloaded_unique_features": 6334,
+  "missing_count": 0,
+  "fields": [
+    "objectid",
+    "shape",
+    "nam",
+    "com",
+    "ttm",
+    "frm",
+    "sol",
+    "fen",
+    "plz",
+    "dpa_despro",
+    "dpa_descan",
+    "dpa_despar",
+    "tmm",
+    "eac",
+    "ach",
+    "tipo_mineral",
+    "rgm"
+  ],
+  "geometry_type": "esriGeometryPolygon",
+  "gpkg_file": "/home/robiotec/SVI/arcom/arcom_catastro.gpkg",
+  "gpkg_size_mb": 3.26,
+  "geojson_size_mb": 5.55
+}

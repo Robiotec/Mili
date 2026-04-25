@@ -28,7 +28,7 @@ const TELEMETRY_SPEED_STATIONARY_CONFIRMATIONS = 3;
 const TELEMETRY_SPEED_ZERO_DECAY_FACTOR = 0.45;
 const TELEMETRY_SPEED_MIN_VISIBLE_KMH = 0.5;
 const TELEMETRY_SPEED_MAX_SAMPLE_GAP_SEC = 15;
-const ARCOM_CONCESSION_MIN_ZOOM = 11;
+const ARCOM_CONCESSION_MIN_ZOOM = Number.isFinite(Number(config.arcomMinZoom)) ? Math.max(1, Math.min(24, Number(config.arcomMinZoom))) : 11;
 const ARCOM_CONCESSION_VIEW_LIMIT = 120;
 const ECUADOR_MAP_CENTER = [-1.831239, -78.183406];
 const ECUADOR_MAP_ZOOM = 7;
@@ -7223,8 +7223,8 @@ function telemetryFreshnessLabel(value) {
 
 function telemetryBatteryTone(batteryPct) {
   if (batteryPct === null) return "unknown";
-  if (batteryPct <= 20) return "critical";
-  if (batteryPct <= 45) return "warning";
+  if (batteryPct <= 15) return "critical";
+  if (batteryPct <= 25) return "warning";
   return "good";
 }
 
@@ -7543,7 +7543,7 @@ function miningConcessionPopupMarkup(properties) {
     <strong>${escapeHtml(String(data.nombre_concesion || "Concesion minera"))}</strong><br>
     Codigo catastral: ${escapeHtml(String(data.codigo_catastral || "--"))}<br>
     Estado actual: ${escapeHtml(String(data.estado_actual || "--"))}<br>
-    Empresa duena: ${escapeHtml(String(data.titular || "--"))}<br>
+    Empresa / Titular: ${escapeHtml(String(data.empresa || "--"))}<br>
     Fase del recurso mineral: ${escapeHtml(String(data.fase_recurso_mineral || "--"))}<br>
     Tipo de mineral: ${escapeHtml(String(data.tipo_mineral || "--"))}
   `;
@@ -7566,8 +7566,8 @@ function buildMiningConcessionNoteMarkup(item) {
           <strong>${escapeHtml(String(concession.estado_actual || "--"))}</strong>
         </article>
         <article class="telemetry-concession-item">
-          <span>Empresa duena</span>
-          <strong>${escapeHtml(String(concession.titular || "--"))}</strong>
+          <span>Empresa / Titular</span>
+          <strong>${escapeHtml(String(concession.empresa || "--"))}</strong>
         </article>
         <article class="telemetry-concession-item">
           <span>Fase recurso mineral</span>
@@ -7823,31 +7823,23 @@ function renderTelemetryFocus(items) {
   const { timeLabel: hora } = resolveTelemetryTimestamp(item);
   const speed = resolveTelemetrySpeed(item);
 
+  const GPS_FIX_LABELS = ["Sin GPS", "Sin fix", "2D fix", "3D fix", "DGPS", "RTK Float", "RTK Fixed"];
+  const gpsFixLabel = extra.gps_fix_type != null ? (GPS_FIX_LABELS[extra.gps_fix_type] ?? `Fix ${extra.gps_fix_type}`) : "--";
+  const armedLabel = extra.armed === true ? "ARMADO" : extra.armed === false ? "DESARMADO" : "--";
+  const sysStatusLabel = extra.system_status_text ? String(extra.system_status_text).toUpperCase() : "--";
+  const satsLabel = extra.satellites_visible != null ? String(extra.satellites_visible) : "--";
+
   const motionStats = [
-    {
-      label: "ID API",
-      value: String(extra.api_device_id || extra.gps_api_id || "--"),
-    },
-    {
-      label: "Hora",
-      value: hora,
-    },
-    {
-      label: "Velocidad",
-      value: formatTelemetryValue(speed, " km/h"),
-    },
-    {
-      label: "Altitud",
-      value: formatTelemetryValue(item.altitude ?? 0, " m"),
-    },
-    {
-      label: "Latitud",
-      value: formatLocationCoordinate(item.lat ?? 0),
-    },
-    {
-      label: "Longitud",
-      value: formatLocationCoordinate(item.lon ?? 0),
-    },
+    { label: "ID API",      value: String(extra.api_device_id || extra.gps_api_id || "--") },
+    { label: "Hora",        value: hora },
+    { label: "Velocidad",   value: formatTelemetryValue(speed, " km/h") },
+    { label: "Altitud",     value: formatTelemetryValue(item.altitude ?? 0, " m") },
+    { label: "Latitud",     value: formatLocationCoordinate(item.lat ?? 0) },
+    { label: "Longitud",    value: formatLocationCoordinate(item.lon ?? 0) },
+    { label: "Estado",      value: armedLabel },
+    { label: "Sistema",     value: sysStatusLabel },
+    { label: "Fix GPS",     value: gpsFixLabel },
+    { label: "Satélites",   value: satsLabel },
   ];
   const label = escapeHtml(telemetryLabel(item).toUpperCase());
   const typeLabel = escapeHtml(String(item.vehicle_type || item.device_kind || "vehiculo").trim().toUpperCase() || "VEHICULO");
@@ -7869,6 +7861,19 @@ function renderTelemetryFocus(items) {
           <div class="telemetry-focus-meta">ID ${identifier}</div>
         </div>
         <span class="telemetry-focus-freshness" style="color:${colorForFreshness(item.freshness)}">${telemetryFreshnessLabel(item.freshness)}</span>
+      </div>
+
+      <div class="telemetry-battery-card" data-level="${batteryTone}">
+        <div class="telemetry-battery-copy">
+          <span class="telemetry-battery-kicker">Batería</span>
+          <strong>${escapeHtml(batterySummary)}</strong>
+        </div>
+        <div class="telemetry-battery-visual">
+          <div class="telemetry-battery-icon">
+            <div class="telemetry-battery-fill" style="width:${batteryFill}%"></div>
+          </div>
+          <span class="telemetry-battery-value">${escapeHtml(batteryValueText)}</span>
+        </div>
       </div>
 
       <div class="telemetry-focus-info-grid">

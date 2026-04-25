@@ -140,6 +140,11 @@ class GPSData:
     lon: float
     heading: float
     timestamp: str
+    _raw: dict = None  # payload completo para campos extra (altitude, speed, battery, etc.)
+
+    def __post_init__(self):
+        if self._raw is None:
+            self._raw = {}
 
     def validate(self) -> None:
         if not self.id:
@@ -237,6 +242,7 @@ class GPSData:
             lon=float(lon_raw),
             heading=float(heading_raw),
             timestamp=str(timestamp_raw),
+            _raw=data if isinstance(data, dict) else {},
         )
 
 
