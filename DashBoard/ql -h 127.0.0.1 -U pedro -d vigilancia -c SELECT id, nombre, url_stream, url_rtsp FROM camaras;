@@ -1,5 +1,0 @@
- id |        nombre        |               descripcion               | ip_publica | activo | usuario | password |         creado_en          |       actualizado_en       | puerto 
-----+----------------------+-----------------------------------------+------------+--------+---------+----------+----------------------------+----------------------------+--------
-  1 | MediaMTX API CENTRAL | Servidor de streaming API CENTRAL local | 127.0.0.1  | t      | admin   | admin123 | 2026-04-23 15:48:23.354429 | 2026-04-23 15:48:23.354429 |   9998
-(1 row)
-

@@ -87,6 +87,7 @@ ARCOM_CONCESSION_STORE = ArcomConcessionStore(ARCOM_GPKG_PATH)
 OBJETIVOS_DIR = Path(os.getenv("OBJETIVOS_DIR", "/home/robiotec/SVI/objetivos")).expanduser()
 OBJETIVOS_LATEST_DIR = OBJETIVOS_DIR / "latest"
 OBJETIVO_API_BASE_URL = os.getenv("OBJETIVO_API_BASE_URL", "http://127.0.0.1:8004").strip().rstrip("/")
+OPENSKY_DATA_FILE = Path(os.getenv("OPENSKY_DATA_FILE", "/home/robiotec/SVI/opensky/opensky_data.json")).expanduser()
 CROPS_MANIFEST_CACHE_TTL_SEC = max(float(os.getenv("CROPS_MANIFEST_CACHE_TTL_SEC", "30")), 0.0)
 PUBLIC_PATHS = frozenset({"/login", "/api/login", "/api/logout"})
 PUBLIC_PATH_PREFIXES = ("/static", "/icons", "/assets")
@@ -3492,8 +3493,6 @@ def _request_query_float(request: web.Request, name: str) -> float:
         raise ValueError(f"invalid_{name}") from exc
 
 
-OPENSKY_DATA_FILE = Path("/home/robiotec/SVI/opensky/opensky_data.json")
-
 async def handle_opensky_states(request: web.Request) -> web.Response:
     try:
         data = json.loads(OPENSKY_DATA_FILE.read_text(encoding="utf-8"))
@@ -3879,18 +3878,12 @@ def main() -> None:
 
     host = settings.host
     port = settings.port
-    try:
-        bind_port = _find_available_port(host, port)
-    except OSError:
-        bind_port = port
 
     visible_host = "127.0.0.1" if host == "0.0.0.0" else host
-    if bind_port != port:
-        print(f"Puerto {port} ocupado. Usando puerto alterno {bind_port}.")
-    print(f"Visor web disponible en http://{visible_host}:{bind_port}")
+    print(f"Visor web disponible en http://{visible_host}:{port}")
     if host == "0.0.0.0":
         print("Acceso en red local habilitado: usa la IP local del equipo desde el celular.")
-    web.run_app(create_app(), host=host, port=bind_port, access_log=None)
+    web.run_app(create_app(), host=host, port=port, access_log=None)
 
 
 if __name__ == "__main__":
