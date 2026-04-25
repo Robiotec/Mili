@@ -1,4 +1,4 @@
-1#!/bin/bash
+#!/bin/bash
 # Servicio de telemetría MAVLink → API Central
 # Logs guardados en la misma carpeta: robiotecTelemetry.log
 

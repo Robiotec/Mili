@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     MEDIAMTX_API_USERNAME: Optional[str] = None
     MEDIAMTX_API_PASSWORD: Optional[str] = None
 
+    # ── OpenSky Network ──
+    OPENSKY_LAMIN: float = -5.0
+    OPENSKY_LOMIN: float = -81.0
+    OPENSKY_LAMAX: float = 2.0
+    OPENSKY_LOMAX: float = -75.0
+
     # ── PostgreSQL ──
     DB_HOST: str
     DB_PORT: int

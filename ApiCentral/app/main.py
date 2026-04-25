@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.routers import auth, stream_auth, health, ptz, telemetry
+from app.routers import auth, stream_auth, health, ptz, telemetry, opensky
 from app.db.connection import db
 
 
@@ -18,8 +18,8 @@ app = FastAPI(
     description="API para sistema de gestión.",
     version="1.0.0",
     lifespan=lifespan,
-    #openapi_url=None,
-    #docs_url=None,
+    openapi_url=None,
+    docs_url=None,
     redoc_url=None,
 )
 
@@ -43,6 +43,7 @@ app.include_router(stream_auth.router, prefix="/stream-auth", tags=["stream-auth
 app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(ptz.router, prefix="/ptz", tags=["ptz"])
 app.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
+app.include_router(opensky.router, prefix="/opensky", tags=["opensky"])
 
 if __name__ == "__main__":
     import uvicorn

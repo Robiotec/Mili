@@ -28,6 +28,8 @@ const TELEMETRY_SPEED_STATIONARY_CONFIRMATIONS = 3;
 const TELEMETRY_SPEED_ZERO_DECAY_FACTOR = 0.45;
 const TELEMETRY_SPEED_MIN_VISIBLE_KMH = 0.5;
 const TELEMETRY_SPEED_MAX_SAMPLE_GAP_SEC = 15;
+const OPENSKY_REFRESH_MS = 15000;
+const OPENSKY_LAYER_STORAGE_KEY = "robiotec.opensky.enabled";
 const ARCOM_CONCESSION_MIN_ZOOM = Number.isFinite(Number(config.arcomMinZoom)) ? Math.max(1, Math.min(24, Number(config.arcomMinZoom))) : 11;
 const ARCOM_CONCESSION_VIEW_LIMIT = 120;
 const ECUADOR_MAP_CENTER = [-1.831239, -78.183406];
@@ -276,6 +278,7 @@ const telemetryMapMode = document.getElementById("telemetry-map-mode");
 const telemetryMapStyleSelect = document.getElementById("telemetry-map-style");
 const telemetryMapRecenter = document.getElementById("telemetry-map-recenter");
 const telemetryMiningToggle = document.getElementById("telemetry-mining-toggle");
+const telemetryOpenskyToggle = document.getElementById("telemetry-opensky-toggle");
 const eventsFeed = document.getElementById("events-feed");
 const logsModeSwitch = document.getElementById("logs-mode-switch");
 const eventsDeviceFilter = document.getElementById("events-device-filter");
@@ -377,6 +380,23 @@ function persistMiningLayerEnabled(enabled) {
     window.localStorage.setItem(TELEMETRY_MINING_LAYER_STORAGE_KEY, enabled ? "1" : "0");
   } catch (error) {}
 }
+
+function resolveInitialOpenskyEnabled() {
+  try {
+    const stored = window.localStorage.getItem(OPENSKY_LAYER_STORAGE_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch (error) {}
+  return false;
+}
+
+function persistOpenskyEnabled(enabled) {
+  try {
+    window.localStorage.setItem(OPENSKY_LAYER_STORAGE_KEY, enabled ? "1" : "0");
+  } catch (error) {}
+}
+
+let openskyLayerEnabled = resolveInitialOpenskyEnabled();
 
 function getInitialCameraName({ allowFallback = true } = {}) {
   const requestedCamera = getRequestedCameraNameFromUrl();
@@ -539,6 +559,8 @@ let cameraAdminStreamUrlAutoManaged = false;
 let cameraAdminLastGeneratedStreamUrl = "";
 const mapMarkers = new Map();
 const locationMarkers = new Map();
+const aircraftMarkers = new Map();
+let openskyIntervalId = null;
 let registerMapInstance = null;
 let registerMapMarker = null;
 let registerMapViewportLoaded = false;
@@ -917,6 +939,19 @@ function getMapMarkerIcon({ powered = true, active = false, markerKind = "camera
   });
   mapMarkerIconCache.set(cacheKey, icon);
   return icon;
+}
+
+function getAircraftIcon(heading) {
+  if (typeof window.L === "undefined") return null;
+  const rot = Number.isFinite(heading) ? heading : 0;
+  return window.L.divIcon({
+    className: "",
+    html: `<div class="opensky-aircraft-marker" style="transform:rotate(${rot}deg)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="28" height="28"><ellipse cx="50" cy="50" rx="8" ry="40" fill="#60a5fa" stroke="rgba(255,255,255,0.55)" stroke-width="2"/><path d="M50,35 L8,68 L14,73 L50,54 L86,73 L92,68 Z" fill="#60a5fa" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/><path d="M50,76 L28,92 L33,95 L50,84 L67,95 L72,92 Z" fill="#60a5fa" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/></svg></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -16],
+    tooltipAnchor: [16, 0],
+  });
 }
 
 function createMapMarker(map, lat, lon, { powered = true, active = false, markerKind = "camera" } = {}) {
@@ -7432,91 +7467,8 @@ function resolveTelemetryTimestamp(item) {
 }
 
 function resolveTelemetrySpeed(item) {
-  if (!item || typeof item !== "object" || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lon))) {
-    return 0;
-  }
-
-  const { epochSec } = resolveTelemetryTimestamp(item);
-  if (epochSec === null) {
-    return 0;
-  }
-
-  if (!window.__lastTelemetrySpeed) window.__lastTelemetrySpeed = {};
-  const extra = item.extra && typeof item.extra === "object" ? item.extra : {};
-  const id = String(item.vehicle_id || extra.vehicle_id || item.device_id || extra.gps_api_id || "").trim();
-  if (!id) {
-    return 0;
-  }
-
-  const prev = window.__lastTelemetrySpeed[id];
-  const directSpeed = toFiniteNumber(item && item.speed);
-  const previousFilteredSpeed = prev && typeof prev.filteredSpeed === "number" ? prev.filteredSpeed : 0;
-  let nextFilteredSpeed = previousFilteredSpeed;
-  let stationaryCount = prev && Number.isInteger(prev.stationaryCount) ? prev.stationaryCount : 0;
-  let rawSpeed = directSpeed !== null && directSpeed > 0 ? directSpeed : null;
-  let distanceMeters = null;
-  let dt = null;
-
-  if (
-    prev
-    && typeof prev.lat === "number"
-    && typeof prev.lon === "number"
-    && typeof prev.epochSec === "number"
-    && prev.epochSec !== epochSec
-  ) {
-    const R = 6371e3;
-    const toRad = (deg) => deg * Math.PI / 180;
-    const dLat = toRad(Number(item.lat) - prev.lat);
-    const dLon = toRad(Number(item.lon) - prev.lon);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-      + Math.cos(toRad(prev.lat)) * Math.cos(toRad(Number(item.lat)))
-      * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    distanceMeters = R * c;
-    dt = epochSec - prev.epochSec;
-
-    if (
-      rawSpeed === null
-      && dt > 0
-      && dt <= TELEMETRY_SPEED_MAX_SAMPLE_GAP_SEC
-      && distanceMeters >= TELEMETRY_SPEED_MIN_MOVEMENT_METERS
-    ) {
-      rawSpeed = (distanceMeters / dt) * 3.6;
-    }
-  }
-
-  const appearsStationary = (
-    distanceMeters !== null
-    && distanceMeters < TELEMETRY_SPEED_MIN_MOVEMENT_METERS
-    && dt !== null
-    && dt > 0
-  ) || (directSpeed !== null && directSpeed <= TELEMETRY_SPEED_MIN_VISIBLE_KMH);
-
-  if (rawSpeed !== null && rawSpeed > 0) {
-    stationaryCount = 0;
-    nextFilteredSpeed = previousFilteredSpeed > 0
-      ? (previousFilteredSpeed * (1 - TELEMETRY_SPEED_SMOOTHING_FACTOR)) + (rawSpeed * TELEMETRY_SPEED_SMOOTHING_FACTOR)
-      : rawSpeed;
-  } else if (appearsStationary) {
-    stationaryCount += 1;
-    if (stationaryCount >= TELEMETRY_SPEED_STATIONARY_CONFIRMATIONS) {
-      nextFilteredSpeed = previousFilteredSpeed * TELEMETRY_SPEED_ZERO_DECAY_FACTOR;
-    }
-  }
-
-  if (nextFilteredSpeed < TELEMETRY_SPEED_MIN_VISIBLE_KMH) {
-    nextFilteredSpeed = 0;
-  }
-
-  window.__lastTelemetrySpeed[id] = {
-    lat: Number(item.lat),
-    lon: Number(item.lon),
-    epochSec,
-    filteredSpeed: nextFilteredSpeed,
-    stationaryCount,
-  };
-
-  return nextFilteredSpeed;
+  const speed = toFiniteNumber(item && item.speed);
+  return speed !== null && speed > 0 ? speed : 0;
 }
 
 function miningConcessionForItem(item) {
@@ -7832,7 +7784,7 @@ function renderTelemetryFocus(items) {
   const motionStats = [
     { label: "ID API",      value: String(extra.api_device_id || extra.gps_api_id || "--") },
     { label: "Hora",        value: hora },
-    { label: "Velocidad",   value: formatTelemetryValue(speed, " km/h") },
+    { label: "Velocidad",   value: formatTelemetryValue(speed, " m/s") },
     { label: "Altitud",     value: formatTelemetryValue(item.altitude ?? 0, " m") },
     { label: "Latitud",     value: formatLocationCoordinate(item.lat ?? 0) },
     { label: "Longitud",    value: formatLocationCoordinate(item.lon ?? 0) },
@@ -7995,7 +7947,7 @@ function updateMap(items) {
       Telemetría: ${String(item.freshness || "unavailable").toUpperCase()}<br>
       Lat: ${lat.toFixed(6)}<br>
       Lon: ${lon.toFixed(6)}<br>
-      Velocidad: ${formatTelemetryValue(resolveTelemetrySpeed(item), " km/h")}<br>
+      Velocidad: ${formatTelemetryValue(resolveTelemetrySpeed(item), " m/s")}<br>
       Hora: ${escapeHtml(resolveTelemetryTimestamp(item).timeLabel)}<br>
       Rumbo: ${formatTelemetryValue(item.heading, "°")}<br>
       Altitud: ${formatTelemetryValue(item.altitude, " m")}<br>
@@ -8051,6 +8003,63 @@ async function refreshTelemetry() {
   }
 }
 
+function clearAircraftMarkers() {
+  for (const marker of aircraftMarkers.values()) {
+    if (mapInstance) mapInstance.removeLayer(marker);
+  }
+  aircraftMarkers.clear();
+}
+
+async function refreshOpenSky() {
+  if (!mapInstance || typeof window.L === "undefined") return;
+  if (document.visibilityState === "hidden") return;
+  if (!openskyLayerEnabled) return;
+  try {
+    const data = await fetchJson("/api/opensky/states", { timeoutMs: 12000 });
+    const states = Array.isArray(data && data.aircraft) ? data.aircraft : [];
+    const nextIcaos = new Set();
+    for (const s of states) {
+      const icao     = s.icao24;
+      const callsign = s.callsign || icao;
+      const lon      = s.lon;
+      const lat      = s.lat;
+      const altM     = s.alt_m;
+      const onGround = s.on_ground;
+      const velMs    = s.vel_ms;
+      const heading  = s.heading || 0;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      nextIcaos.add(icao);
+      let marker = aircraftMarkers.get(icao);
+      if (!marker) {
+        marker = window.L.marker([lat, lon], {
+          icon: getAircraftIcon(heading),
+          zIndexOffset: 500,
+          keyboard: false,
+        }).addTo(mapInstance);
+        aircraftMarkers.set(icao, marker);
+      } else {
+        marker.setLatLng([lat, lon]);
+        marker.setIcon(getAircraftIcon(heading));
+      }
+      bindPrettyTooltip(marker, `${escapeHtml(callsign.toUpperCase())} · ${onGround ? "EN TIERRA" : "EN VUELO"}`);
+      bindPrettyPopup(marker, `
+        <strong>${escapeHtml(callsign.toUpperCase())}</strong><br>
+        ICAO: ${escapeHtml(icao)}<br>
+        Altitud: ${Number.isFinite(altM) ? `${Math.round(altM)} m` : "--"}<br>
+        Velocidad: ${Number.isFinite(velMs) ? `${velMs.toFixed(1)} m/s` : "--"}<br>
+        Rumbo: ${Number.isFinite(heading) ? `${Math.round(heading)}°` : "--"}<br>
+        Estado: ${onGround ? "En tierra" : "En vuelo"}
+      `);
+    }
+    for (const [icao, marker] of aircraftMarkers.entries()) {
+      if (!nextIcaos.has(icao)) {
+        mapInstance.removeLayer(marker);
+        aircraftMarkers.delete(icao);
+      }
+    }
+  } catch (_) {}
+}
+
 function stopAll() {
   for (const [name, timer] of reconnectTimers.entries()) {
     clearTimeout(timer);
@@ -8080,16 +8089,21 @@ function startPolling() {
   if ((vehicleRegistryDetail || vehicleRegistryRailList) && !vehicleRegistryIntervalId) {
     vehicleRegistryIntervalId = setInterval(refreshVehicleRegistry, VEHICLE_REGISTRY_REFRESH_MS);
   }
+  if (telemetryMap && !openskyIntervalId) {
+    refreshOpenSky();
+    openskyIntervalId = setInterval(refreshOpenSky, OPENSKY_REFRESH_MS);
+  }
 }
 
 function stopPolling() {
-  for (const timerId of [statusIntervalId, eventIntervalId, telemetryIntervalId, vehicleRegistryIntervalId]) {
+  for (const timerId of [statusIntervalId, eventIntervalId, telemetryIntervalId, vehicleRegistryIntervalId, openskyIntervalId]) {
     if (timerId) clearInterval(timerId);
   }
   statusIntervalId = null;
   eventIntervalId = null;
   telemetryIntervalId = null;
   vehicleRegistryIntervalId = null;
+  openskyIntervalId = null;
 }
 
 if (audioToggle) {
@@ -8631,6 +8645,19 @@ if (telemetryMapRecenter) {
 if (telemetryMiningToggle) {
   telemetryMiningToggle.addEventListener("change", () => {
     setMiningLayerEnabled(telemetryMiningToggle.checked);
+  });
+}
+
+if (telemetryOpenskyToggle) {
+  telemetryOpenskyToggle.checked = openskyLayerEnabled;
+  telemetryOpenskyToggle.addEventListener("change", () => {
+    openskyLayerEnabled = telemetryOpenskyToggle.checked;
+    persistOpenskyEnabled(openskyLayerEnabled);
+    if (openskyLayerEnabled) {
+      refreshOpenSky();
+    } else {
+      clearAircraftMarkers();
+    }
   });
 }
 

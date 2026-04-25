@@ -3483,6 +3483,19 @@ def _request_query_float(request: web.Request, name: str) -> float:
         raise ValueError(f"invalid_{name}") from exc
 
 
+OPENSKY_DATA_FILE = Path("/home/robiotec/SVI/opensky/opensky_data.json")
+
+async def handle_opensky_states(request: web.Request) -> web.Response:
+    try:
+        data = json.loads(OPENSKY_DATA_FILE.read_text(encoding="utf-8"))
+        return _json_response(data)
+    except FileNotFoundError:
+        return _json_response({"error": "opensky_data_not_found"}, status=503)
+    except Exception as exc:
+        LOGGER.warning("OpenSky read error: %s", exc)
+        return _json_response({"error": "opensky_unavailable", "detail": str(exc)}, status=502)
+
+
 async def handle_arcom_concession_lookup(request: web.Request) -> web.Response:
     if not ARCOM_ENABLED:
         return _json_response(
@@ -3705,6 +3718,7 @@ def create_app() -> web.Application:
             web.post("/api/organizations", handle_organization_create),
             web.put("/api/organizations/{organization_id}", handle_organization_update),
             web.delete("/api/organizations/{organization_id}", handle_organization_delete),
+            web.get("/api/opensky/states", handle_opensky_states),
             web.get("/api/arcom/concession-lookup", handle_arcom_concession_lookup),
             web.get("/api/arcom/concessions", handle_arcom_concessions_bbox),
             web.get("/api/telemetry", handle_telemetry),
