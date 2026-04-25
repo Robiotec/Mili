@@ -12,9 +12,8 @@ router = APIRouter(
 
 
 class ObjetivoPayload(BaseModel):
-    id: str = Field(..., min_length=1)
-    latitud: float
-    longitud: float
+    latitud: float = Field(...)
+    longitud: float = Field(...)
 
 
 class ObjetivoResponse(BaseModel):
@@ -37,14 +36,8 @@ def update_objetivo(objetivo_id: str, payload: ObjetivoPayload):
         POST /objetivo/{id}/update
     """
 
-    if payload.id != objetivo_id:
-        raise HTTPException(
-            status_code=400,
-            detail="El id del payload no coincide con el id de la URL.",
-        )
-
     objetivo = ObjetivoResponse(
-        id=payload.id,
+        id=objetivo_id,
         latitud=payload.latitud,
         longitud=payload.longitud,
         updated_at=datetime.now(timezone.utc).isoformat(),
@@ -93,4 +86,23 @@ def list_objetivos():
         "ok": True,
         "count": len(OBJETIVOS),
         "data": list(OBJETIVOS.values()),
+    }
+
+
+@router.delete("/{objetivo_id}")
+def clear_objetivo(objetivo_id: str):
+    """
+    Elimina la última posición registrada de un objetivo.
+    Endpoint:
+        DELETE /objetivo/{id}
+    """
+
+    existed = objetivo_id in OBJETIVOS
+    OBJETIVOS.pop(objetivo_id, None)
+
+    return {
+        "ok": True,
+        "cleared": True,
+        "existed": existed,
+        "id": objetivo_id,
     }

@@ -86,6 +86,15 @@ def history_snapshot_path(objetivo_id: str) -> Path:
     return HISTORY_DIR / f"{objetivo_id}.ndjson"
 
 
+def clear_latest_snapshot(objetivo_id: str) -> bool:
+    path = latest_snapshot_path(objetivo_id)
+    try:
+        path.unlink()
+        return True
+    except FileNotFoundError:
+        return False
+
+
 def load_previous_snapshot(objetivo_id: str) -> dict[str, Any] | None:
     path = latest_snapshot_path(objetivo_id)
     if not path.exists():
@@ -152,6 +161,10 @@ def main() -> int:
                         data["updated_at"] or "--",
                     )
         except HTTPError as exc:
+            if exc.code == 404:
+                previous = None
+                if clear_latest_snapshot(OBJETIVO_ID):
+                    logger.info("Objetivo %s no encontrado en API; cache latest local limpiada", OBJETIVO_ID)
             logger.warning("HTTP %s consultando objetivo %s", exc.code, OBJETIVO_ID)
         except URLError as exc:
             logger.warning("No se pudo consultar objetivo %s: %s", OBJETIVO_ID, exc)

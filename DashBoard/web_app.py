@@ -18,7 +18,9 @@ import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlparse
+from urllib.request import Request, urlopen
 
 from aiohttp import web
 
@@ -80,9 +82,11 @@ ARCOM_GPKG_PATH = Path(os.getenv("ARCOM_GPKG_PATH", "/home/robiotec/ARCOM/arcom_
 ARCOM_MAX_FEATURES_PER_REQUEST = max(1, int(os.getenv("ARCOM_MAX_FEATURES_PER_REQUEST", "120")))
 ARCOM_ENABLED = os.getenv("ARCOM_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 ARCOM_MIN_ZOOM = max(1, min(24, int(os.getenv("ARCOM_MIN_ZOOM", "11"))))
+THUNDERFOREST_API_KEY = os.getenv("THUNDERFOREST_API_KEY", "").strip()
 ARCOM_CONCESSION_STORE = ArcomConcessionStore(ARCOM_GPKG_PATH)
 OBJETIVOS_DIR = Path(os.getenv("OBJETIVOS_DIR", "/home/robiotec/SVI/objetivos")).expanduser()
 OBJETIVOS_LATEST_DIR = OBJETIVOS_DIR / "latest"
+OBJETIVO_API_BASE_URL = os.getenv("OBJETIVO_API_BASE_URL", "http://127.0.0.1:8004").strip().rstrip("/")
 CROPS_MANIFEST_CACHE_TTL_SEC = max(float(os.getenv("CROPS_MANIFEST_CACHE_TTL_SEC", "30")), 0.0)
 PUBLIC_PATHS = frozenset({"/login", "/api/login", "/api/logout"})
 PUBLIC_PATH_PREFIXES = ("/static", "/icons", "/assets")
@@ -1928,7 +1932,10 @@ async def handle_mapa(request: web.Request) -> web.Response:
     return _html_response(
         "mapa.html",
         request=request,
-        replacements={"__ARCOM_MIN_ZOOM__": str(ARCOM_MIN_ZOOM)},
+        replacements={
+            "__ARCOM_MIN_ZOOM__": str(ARCOM_MIN_ZOOM),
+            "__THUNDERFOREST_API_KEY_JSON__": json.dumps(THUNDERFOREST_API_KEY),
+        },
     )
 
 
@@ -3593,6 +3600,26 @@ def _objetivo_latest_file_path(objetivo_id: str) -> Path:
     return OBJETIVOS_LATEST_DIR / f"{normalized_id}.json"
 
 
+def _clear_objetivo_latest_cache(objetivo_id: str) -> bool:
+    snapshot_path = _objetivo_latest_file_path(objetivo_id)
+    try:
+        snapshot_path.unlink()
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def _clear_remote_objetivo(objetivo_id: str) -> dict:
+    if not OBJETIVO_API_BASE_URL:
+        return {"ok": False, "error": "objetivo_api_base_url_missing"}
+
+    clear_url = f"{OBJETIVO_API_BASE_URL}/objetivo/{quote(objetivo_id, safe='')}"
+    request = Request(clear_url, method="DELETE")
+    with urlopen(request, timeout=5.0) as response:
+        payload = json.loads(response.read().decode("utf-8") or "{}")
+    return payload if isinstance(payload, dict) else {"ok": True, "cleared": True, "id": objetivo_id}
+
+
 async def handle_objetivo_latest(request: web.Request) -> web.Response:
     objetivo_id = str(request.match_info.get("objetivo_id") or "").strip()
     try:
@@ -3634,6 +3661,48 @@ async def handle_objetivo_latest(request: web.Request) -> web.Response:
             "data": data,
             "concession": concession,
         }
+    )
+
+
+async def handle_objetivo_clear(request: web.Request) -> web.Response:
+    objetivo_id = str(request.match_info.get("objetivo_id") or "").strip()
+    if not objetivo_id:
+        return _json_response({"error": "invalid_objetivo_id"}, status=400)
+
+    try:
+        cache_cleared = _clear_objetivo_latest_cache(objetivo_id)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+
+    remote_payload = None
+    remote_status = 200
+    try:
+        remote_payload = await asyncio.to_thread(_clear_remote_objetivo, objetivo_id)
+    except HTTPError as exc:
+        remote_status = exc.code
+        if exc.code == 404:
+            remote_payload = {"ok": True, "cleared": True, "existed": False, "id": objetivo_id}
+        else:
+            detail = exc.read().decode("utf-8", errors="ignore").strip()
+            LOGGER.warning("No se pudo limpiar objetivo remoto %s: HTTP %s %s", objetivo_id, exc.code, detail or "")
+            remote_payload = {"ok": False, "error": "objetivo_remote_clear_failed", "detail": detail or f"HTTP {exc.code}"}
+    except URLError as exc:
+        LOGGER.warning("No se pudo limpiar objetivo remoto %s: %s", objetivo_id, exc)
+        remote_status = 502
+        remote_payload = {"ok": False, "error": "objetivo_remote_unreachable", "detail": str(exc)}
+    except Exception as exc:
+        LOGGER.warning("Fallo inesperado limpiando objetivo remoto %s: %s", objetivo_id, exc)
+        remote_status = 500
+        remote_payload = {"ok": False, "error": "objetivo_remote_clear_failed", "detail": str(exc)}
+
+    status = 200 if remote_payload and remote_payload.get("ok") else remote_status
+    return _json_response(
+        {
+            "ok": bool(remote_payload and remote_payload.get("ok")),
+            "cache_cleared": cache_cleared,
+            "remote": remote_payload,
+        },
+        status=status,
     )
 
 
@@ -3775,6 +3844,7 @@ def create_app() -> web.Application:
             web.get("/api/arcom/concession-lookup", handle_arcom_concession_lookup),
             web.get("/api/arcom/concessions", handle_arcom_concessions_bbox),
             web.get("/api/objetivos/{objetivo_id}", handle_objetivo_latest),
+            web.post("/api/objetivos/{objetivo_id}/clear", handle_objetivo_clear),
             web.get("/api/telemetry", handle_telemetry),
             web.post("/api/telemetry/{device_id}", handle_telemetry_update),
             web.static("/static", STATIC_DIR),

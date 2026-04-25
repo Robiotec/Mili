@@ -31,8 +31,9 @@ const TELEMETRY_SPEED_MAX_SAMPLE_GAP_SEC = 15;
 const OPENSKY_REFRESH_MS = 15000;
 const HIGH_VALUE_OBJECTIVE_IDS = ["DRONE"];
 const OPENSKY_LAYER_STORAGE_KEY = "robiotec.opensky.enabled";
-const ARCOM_CONCESSION_MIN_ZOOM = Number.isFinite(Number(config.arcomMinZoom)) ? Math.max(1, Math.min(24, Number(config.arcomMinZoom))) : 11;
+const ARCOM_CONCESSION_MIN_ZOOM = Number.isFinite(Number(config.arcomMinZoom)) ? Math.max(1, Math.min(24, Number(config.arcomMinZoom))) : 9;
 const ARCOM_CONCESSION_VIEW_LIMIT = 120;
+const THUNDERFOREST_API_KEY = typeof config.thunderforestApiKey === "string" ? config.thunderforestApiKey.trim() : "";
 const ECUADOR_MAP_CENTER = [-1.831239, -78.183406];
 const ECUADOR_MAP_ZOOM = 7;
 const VEHICLE_REGISTRY_REFRESH_MS = 4000;
@@ -41,26 +42,46 @@ const SINGLE_STREAM_BREAKPOINT_PX = 960;
 const THEME_STORAGE_KEY = "robiotec.theme";
 const TELEMETRY_MAP_STYLE_STORAGE_KEY = "robiotec.telemetry.map.style";
 const TELEMETRY_MINING_LAYER_STORAGE_KEY = "robiotec.telemetry.mining.enabled";
-const SATELLITE_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const SATELLITE_LABELS_TILE_URL = "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
-const SATELLITE_TILE_ATTRIBUTION = '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+const SATELLITE_TILE_URL = THUNDERFOREST_API_KEY
+  ? "https://api.thunderforest.com/atlas/{z}/{x}/{y}{r}.png?apikey={apikey}"
+  : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_LABELS_TILE_URL = THUNDERFOREST_API_KEY
+  ? ""
+  : "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_TILE_ATTRIBUTION = THUNDERFOREST_API_KEY
+  ? '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  : '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
 const STREET_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const STREET_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const CAMERA_PICKER_MAX_ZOOM = 18;
 const DARK_TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const DARK_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-const RELIEF_TILE_URL = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
-const RELIEF_TILE_ATTRIBUTION = 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)';
+const GRAY_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+const GRAY_TILE_ATTRIBUTION = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
+const RELIEF_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}";
+const RELIEF_TILE_ATTRIBUTION = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community';
 const TELEMETRY_MAP_STYLE_DEFINITIONS = {
+  gray: {
+    baseUrl: GRAY_TILE_URL,
+    baseOptions: {
+      maxZoom: 16,
+      maxNativeZoom: 16,
+      attribution: GRAY_TILE_ATTRIBUTION,
+    },
+  },
   satellite: {
     baseUrl: SATELLITE_TILE_URL,
     baseOptions: {
-      maxZoom: 20,
+      maxZoom: 22,
+      maxNativeZoom: THUNDERFOREST_API_KEY ? 22 : 19,
+      apikey: THUNDERFOREST_API_KEY,
+      detectRetina: true,
       attribution: SATELLITE_TILE_ATTRIBUTION,
     },
     overlayUrl: SATELLITE_LABELS_TILE_URL,
     overlayOptions: {
-      maxZoom: 20,
+      maxZoom: 22,
+      maxNativeZoom: 19,
       attribution: "",
       pane: "overlayPane",
       opacity: 0.92,
@@ -78,8 +99,8 @@ const TELEMETRY_MAP_STYLE_DEFINITIONS = {
   relief: {
     baseUrl: RELIEF_TILE_URL,
     baseOptions: {
-      subdomains: "abc",
-      maxZoom: 17,
+      maxZoom: 18,
+      maxNativeZoom: 18,
       attribution: RELIEF_TILE_ATTRIBUTION,
     },
   },
@@ -564,6 +585,7 @@ const aircraftMarkers = new Map();
 const vehicleTracks = new Map();
 const objectiveMarkers = new Map();
 const highValueObjectiveHistory = new Map();
+const dismissedHighValueObjectiveKeys = new Map();
 let openskyIntervalId = null;
 let registerMapInstance = null;
 let registerMapMarker = null;
@@ -794,16 +816,22 @@ if (pageUsesDashboardCameraPreview()) {
 function addSatelliteTileLayers(map) {
   if (!map || typeof window.L === "undefined") return null;
   const imageryLayer = window.L.tileLayer(SATELLITE_TILE_URL, {
-    maxZoom: 20,
+    maxZoom: 22,
+    maxNativeZoom: THUNDERFOREST_API_KEY ? 22 : 19,
+    apikey: THUNDERFOREST_API_KEY,
+    detectRetina: true,
     attribution: SATELLITE_TILE_ATTRIBUTION,
   }).addTo(map);
 
-  window.L.tileLayer(SATELLITE_LABELS_TILE_URL, {
-    maxZoom: 20,
-    attribution: "",
-    pane: "overlayPane",
-    opacity: 0.92,
-  }).addTo(map);
+  if (SATELLITE_LABELS_TILE_URL) {
+    window.L.tileLayer(SATELLITE_LABELS_TILE_URL, {
+      maxZoom: 22,
+      maxNativeZoom: 19,
+      attribution: "",
+      pane: "overlayPane",
+      opacity: 0.92,
+    }).addTo(map);
+  }
 
   return imageryLayer;
 }
@@ -824,7 +852,7 @@ function getInitialTelemetryMapStyle() {
       return savedValue;
     }
   } catch (error) {}
-  return "satellite";
+  return "gray";
 }
 
 let activeTelemetryMapStyle = getInitialTelemetryMapStyle();
@@ -6460,6 +6488,8 @@ function objectivePointKey(point) {
 function syncHighValueObjectiveHistory(payload) {
   const point = buildObjectiveHistoryPoint(payload);
   if (!point.id || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return;
+  const pointKey = objectivePointKey(point);
+  if (dismissedHighValueObjectiveKeys.get(point.id) === pointKey) return;
 
   const currentHistory = highValueObjectiveHistory.get(point.id) || [];
   const lastPoint = currentHistory[currentHistory.length - 1] || null;
@@ -6481,6 +6511,7 @@ function syncHighValueObjectiveMarker(payload) {
 
   const markerKey = objectivePointKey(point);
   if (!markerKey) return;
+  if (dismissedHighValueObjectiveKeys.get(point.id) === markerKey) return;
 
   let marker = objectiveMarkers.get(markerKey);
   if (!marker) {
@@ -6513,6 +6544,13 @@ async function refreshHighValueObjectives() {
 }
 
 function clearHighValueObjectives() {
+  for (const [objectiveId, points] of highValueObjectiveHistory.entries()) {
+    if (!Array.isArray(points) || points.length === 0) continue;
+    const lastPoint = points[points.length - 1];
+    const lastPointKey = objectivePointKey(lastPoint);
+    if (!lastPointKey) continue;
+    dismissedHighValueObjectiveKeys.set(objectiveId, lastPointKey);
+  }
   for (const marker of objectiveMarkers.values()) {
     if (mapInstance) {
       mapInstance.removeLayer(marker);
@@ -6520,6 +6558,17 @@ function clearHighValueObjectives() {
   }
   objectiveMarkers.clear();
   highValueObjectiveHistory.clear();
+}
+
+async function clearHighValueObjectiveSources() {
+  await Promise.all(HIGH_VALUE_OBJECTIVE_IDS.map(async (objectiveId) => {
+    try {
+      await fetchJson(`/api/objetivos/${encodeURIComponent(objectiveId)}/clear`, {
+        method: "POST",
+        timeoutMs: 5000,
+      });
+    } catch (error) {}
+  }));
 }
 
 function locationCapabilityTags(device) {
@@ -8234,6 +8283,20 @@ function finalizeDroneFlight(store, timestampMs) {
   store.activeFlight = null;
 }
 
+async function clearTelemetryTracks() {
+  for (const [deviceId, store] of vehicleTracks.entries()) {
+    if (store.activeFlight && store.activeFlight.polyline) {
+      removeDroneFlightPolyline(store.activeFlight);
+    }
+    for (const flight of store.completedFlights || []) {
+      removeDroneFlightPolyline(flight);
+    }
+    vehicleTracks.delete(deviceId);
+  }
+  clearHighValueObjectives();
+  await clearHighValueObjectiveSources();
+}
+
 function syncDroneTrack(item) {
   if (!item || telemetryMarkerKind(item) !== "drone") return;
 
@@ -8255,7 +8318,7 @@ function syncDroneTrack(item) {
   }
 }
 
-function exportAndClearTracks() {
+function exportTracks() {
   const flights = [];
   const objectives = [];
 
@@ -8297,22 +8360,11 @@ function exportAndClearTracks() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `rutas_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+  a.download = `rutas_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-
-  for (const [deviceId, store] of vehicleTracks.entries()) {
-    if (store.activeFlight && store.activeFlight.polyline) {
-      removeDroneFlightPolyline(store.activeFlight);
-    }
-    for (const flight of store.completedFlights || []) {
-      removeDroneFlightPolyline(flight);
-    }
-    vehicleTracks.delete(deviceId);
-  }
-  clearHighValueObjectives();
 }
 
 function clearAircraftMarkers() {
@@ -8956,7 +9008,12 @@ if (telemetryMapRecenter) {
 
 const telemetryTrackExport = document.getElementById("telemetry-track-export");
 if (telemetryTrackExport) {
-  telemetryTrackExport.addEventListener("click", exportAndClearTracks);
+  telemetryTrackExport.addEventListener("click", exportTracks);
+}
+
+const telemetryTrackClear = document.getElementById("telemetry-track-clear");
+if (telemetryTrackClear) {
+  telemetryTrackClear.addEventListener("click", clearTelemetryTracks);
 }
 
 if (telemetryMiningToggle) {

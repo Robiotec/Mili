@@ -19,8 +19,8 @@ app = FastAPI(
     description="API para sistema de gestión.",
     version="1.0.0",
     lifespan=lifespan,
-    openapi_url="/openapi.json",
-    docs_url="/docs",
+    openapi_url=None,
+    docs_url=None,
     redoc_url=None,
 )
 

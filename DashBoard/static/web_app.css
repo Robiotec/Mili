@@ -4904,6 +4904,18 @@ body[data-theme="light"] .telemetry-map-overlay-organization {
   border-color: rgba(34,211,238,0.6);
 }
 
+.telemetry-track-clear {
+  min-width: 112px;
+  background: linear-gradient(135deg, rgba(248,113,113,0.12), rgba(249,115,22,0.12));
+  border-color: rgba(248,113,113,0.35);
+  color: #f97316;
+}
+.telemetry-track-clear:hover,
+.telemetry-track-clear:focus-visible {
+  background: linear-gradient(135deg, rgba(248,113,113,0.2), rgba(249,115,22,0.2));
+  border-color: rgba(249,115,22,0.55);
+}
+
 .telemetry-toolbar {
   display: flex;
   align-items: flex-end;
