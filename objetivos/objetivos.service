@@ -1,0 +1,16 @@
+[Unit]
+Description=Robiotec Objetivos Monitor
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/robiotec/SVI/objetivos
+ExecStart=/home/robiotec/SVI/objetivos/objetivos.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/robiotec/SVI/objetivos/objetivos_stdout.log
+StandardError=append:/home/robiotec/SVI/objetivos/objetivos_stderr.log
+
+[Install]
+WantedBy=multi-user.target

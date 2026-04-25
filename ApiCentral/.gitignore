@@ -1,0 +1,13 @@
+# Environment files with credentials — never commit these
+.env
+**/.env
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+*.egg-info
+
+# Virtual environments
+.venv

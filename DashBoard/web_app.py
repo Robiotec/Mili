@@ -81,6 +81,8 @@ ARCOM_MAX_FEATURES_PER_REQUEST = max(1, int(os.getenv("ARCOM_MAX_FEATURES_PER_RE
 ARCOM_ENABLED = os.getenv("ARCOM_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 ARCOM_MIN_ZOOM = max(1, min(24, int(os.getenv("ARCOM_MIN_ZOOM", "11"))))
 ARCOM_CONCESSION_STORE = ArcomConcessionStore(ARCOM_GPKG_PATH)
+OBJETIVOS_DIR = Path(os.getenv("OBJETIVOS_DIR", "/home/robiotec/SVI/objetivos")).expanduser()
+OBJETIVOS_LATEST_DIR = OBJETIVOS_DIR / "latest"
 CROPS_MANIFEST_CACHE_TTL_SEC = max(float(os.getenv("CROPS_MANIFEST_CACHE_TTL_SEC", "30")), 0.0)
 PUBLIC_PATHS = frozenset({"/login", "/api/login", "/api/logout"})
 PUBLIC_PATH_PREFIXES = ("/static", "/icons", "/assets")
@@ -3584,6 +3586,57 @@ async def handle_arcom_concessions_bbox(request: web.Request) -> web.Response:
     return _json_response(feature_collection)
 
 
+def _objetivo_latest_file_path(objetivo_id: str) -> Path:
+    normalized_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(objetivo_id or "").strip())
+    if not normalized_id:
+        raise ValueError("invalid_objetivo_id")
+    return OBJETIVOS_LATEST_DIR / f"{normalized_id}.json"
+
+
+async def handle_objetivo_latest(request: web.Request) -> web.Response:
+    objetivo_id = str(request.match_info.get("objetivo_id") or "").strip()
+    try:
+        snapshot_path = _objetivo_latest_file_path(objetivo_id)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+
+    try:
+        payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return _json_response({"ok": True, "found": False, "data": None, "concession": None})
+    except Exception as exc:
+        LOGGER.warning("No se pudo leer objetivo %s: %s", objetivo_id, exc)
+        return _json_response({"error": "objetivo_unavailable", "detail": str(exc)}, status=502)
+
+    data = payload.get("data") if isinstance(payload, dict) and isinstance(payload.get("data"), dict) else payload
+    if not isinstance(data, dict):
+        return _json_response({"ok": True, "found": False, "data": None, "concession": None})
+
+    concession = None
+    if ARCOM_ENABLED:
+        try:
+            lat = float(data.get("latitud"))
+            lon = float(data.get("longitud"))
+            concession = await asyncio.to_thread(
+                ARCOM_CONCESSION_STORE.get_concession_for_point,
+                lat=lat,
+                lon=lon,
+            )
+        except (TypeError, ValueError):
+            concession = None
+        except ArcomLookupError as exc:
+            LOGGER.warning("Consulta ARCOM no disponible para objetivo %s: %s", objetivo_id, exc)
+
+    return _json_response(
+        {
+            "ok": True,
+            "found": True,
+            "data": data,
+            "concession": concession,
+        }
+    )
+
+
 async def handle_telemetry_update(request: web.Request) -> web.Response:
     device_id = request.match_info.get("device_id", "").strip()
     device = APP_CONTEXT.device_catalog.get(device_id)
@@ -3721,6 +3774,7 @@ def create_app() -> web.Application:
             web.get("/api/opensky/states", handle_opensky_states),
             web.get("/api/arcom/concession-lookup", handle_arcom_concession_lookup),
             web.get("/api/arcom/concessions", handle_arcom_concessions_bbox),
+            web.get("/api/objetivos/{objetivo_id}", handle_objetivo_latest),
             web.get("/api/telemetry", handle_telemetry),
             web.post("/api/telemetry/{device_id}", handle_telemetry_update),
             web.static("/static", STATIC_DIR),

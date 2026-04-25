@@ -9,7 +9,7 @@ import time
 from typing import Any
 
 
-JWT_SECRET = os.getenv("JWT_SECRET", os.getenv("WEB_SESSION_SECRET", "robiotec-dev-session-secret"))
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("WEB_SESSION_SECRET") or ""
 JWT_ALGORITHM = "HS256"
 JWT_ACCESS_TOKEN_TTL_SEC = int(os.getenv("JWT_ACCESS_TOKEN_TTL_SECONDS", "3600"))
 

@@ -2,8 +2,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.routers import auth, stream_auth, health, ptz, telemetry, opensky
+from app.routers import auth, stream_auth, health, ptz, telemetry, opensky, objetivo
 from app.db.connection import db
+
 
 
 @asynccontextmanager
@@ -18,20 +19,21 @@ app = FastAPI(
     description="API para sistema de gestión.",
     version="1.0.0",
     lifespan=lifespan,
-    openapi_url=None,
-    docs_url=None,
+    openapi_url="/openapi.json",
+    docs_url="/docs",
     redoc_url=None,
 )
 
-# CORS: permitir acceso desde la IP pública y localhost
+_extra_origins = [o.strip() for o in settings.CORS_EXTRA_ORIGINS.split(",") if o.strip()]
+_cors_origins = [
+    f"http://{settings.PUBLIC_HOST}:{settings.API_PORT}",
+    f"http://{settings.PUBLIC_HOST}",
+    *_extra_origins,
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        f"http://{settings.PUBLIC_HOST}:{settings.API_PORT}",
-        f"http://{settings.PUBLIC_HOST}",
-        "http://localhost:3000",
-        "http://localhost:8080",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
@@ -44,6 +46,7 @@ app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(ptz.router, prefix="/ptz", tags=["ptz"])
 app.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
 app.include_router(opensky.router, prefix="/opensky", tags=["opensky"])
+app.include_router(objetivo.router)
 
 if __name__ == "__main__":
     import uvicorn

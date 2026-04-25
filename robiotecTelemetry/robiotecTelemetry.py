@@ -1,14 +1,15 @@
+import os
 import sys
 import time
 import requests
 from pymavlink import mavutil
 from datetime import datetime, timezone
 
-API_URL = "http://45.32.167.86:8004/telemetry/DRONE/update-gps"
-MAV_CONNECTION = "udp:127.0.0.1:14560"
-SEND_INTERVAL_SEC = 1.0
-RECONNECT_DELAY_SEC = 5.0
-DRONE_TIMEOUT_SEC = 10.0  # sin heartbeat durante este tiempo = dron apagado
+API_URL      = os.getenv("TELEMETRY_API_URL", "http://127.0.0.1:8004/telemetry/DRONE/update-gps")
+MAV_CONNECTION      = os.getenv("MAV_CONNECTION", "udp:127.0.0.1:14560")
+SEND_INTERVAL_SEC   = float(os.getenv("SEND_INTERVAL_SEC", "1.0"))
+RECONNECT_DELAY_SEC = float(os.getenv("RECONNECT_DELAY_SEC", "5.0"))
+DRONE_TIMEOUT_SEC   = float(os.getenv("DRONE_TIMEOUT_SEC", "10.0"))
 
 SYSTEM_STATUS_MAP = {
     0: "UNINIT", 1: "BOOT", 2: "CALIBRATING", 3: "STANDBY",
@@ -69,30 +70,20 @@ def build_state() -> dict:
 
 
 def build_payload(state: dict, drone_online: bool) -> dict:
-    """Construye el payload para la API.
-    Si el dron está online usa los valores reales.
-    Si está offline envía ceros para indicar ausencia de datos.
-    lat/lon solo se incluyen si tenemos datos GPS reales.
-    """
     if drone_online:
-        return {k: v for k, v in state.items() if v is not None}
+        payload = {k: v for k, v in state.items() if v is not None}
+        payload["sistema"] = state.get("system_status_text") or "UNKNOWN"
+        payload["estado"]  = "ARMADO" if state.get("armed") else "DESARMADO"
+        return payload
 
-    # Dron apagado: enviar ceros en todos los campos, sin lat/lon si nunca hubo GPS
     payload = {
-        "altitude": 0.0,
-        "speed": 0.0,
-        "heading": 0.0,
-        "battery_remaining_pct": 0,
-        "battery_voltage_v": 0.0,
-        "current_battery_a": 0.0,
         "armed": False,
         "mode": "OFFLINE",
         "system_status_text": "OFFLINE",
-        "gps_fix_type": 0,
-        "satellites_visible": 0,
+        "sistema": "OFFLINE",
+        "estado": "DESARMADO",
         "timestamp": utc_now_iso(),
     }
-    # Conservar última posición conocida si existe; de lo contrario omitir lat/lon
     if state["lat"] is not None:
         payload["lat"] = state["lat"]
         payload["lon"] = state["lon"]
@@ -171,11 +162,13 @@ def main():
                     try:
                         resp = session.post(API_URL, json=payload, timeout=3)
                         if drone_online:
+                            estado  = "ARMADO" if state["armed"] else "DESARMADO"
+                            sistema = state.get("system_status_text") or "UNKNOWN"
                             log(
                                 f"[OK {resp.status_code}] lat={state['lat']} lon={state['lon']} "
                                 f"alt={state['altitude']}m spd={state['speed']}km/h "
-                                f"bat={state['battery_remaining_pct']}% armed={state['armed']} "
-                                f"mode={state['mode']}"
+                                f"bat={state['battery_remaining_pct']}% "
+                                f"sistema={sistema} estado={estado} mode={state['mode']}"
                             )
                         else:
                             log(f"[OK {resp.status_code}] dron OFFLINE — enviando ceros")

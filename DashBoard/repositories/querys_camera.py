@@ -9,7 +9,7 @@ if __package__ is None or __package__ == "":
 else:
     from db.connection import db as conn
 
-from surveillance.config import validate_camera_source, validate_camera_viewer_source
+from surveillance.config import validate_camera_source, validate_camera_viewer_source, MEDIAMTX_HOST, MEDIAMTX_WEBRTC_PORT
 
 
 class CameraRepository:
@@ -660,8 +660,8 @@ class CameraRepository:
         normalized_description = self._normalize_optional_text(description, max_length=4000)
         normalized_unique_code = self._normalize_optional_text(unique_code, max_length=100)
         # Auto-generate stream_url if not provided and unique_code is present
-        if not stream_url and normalized_unique_code:
-            normalized_stream_url = f"http://45.32.167.86:8989/{normalized_unique_code}"
+        if not stream_url and normalized_unique_code and MEDIAMTX_HOST:
+            normalized_stream_url = f"http://{MEDIAMTX_HOST}:{MEDIAMTX_WEBRTC_PORT}/{normalized_unique_code}"
         else:
             normalized_stream_url = self._normalize_stream_url(stream_url)
         normalized_rtsp_url = self._normalize_rtsp_url(rtsp_url)

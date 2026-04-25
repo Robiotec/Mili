@@ -29,6 +29,7 @@ const TELEMETRY_SPEED_ZERO_DECAY_FACTOR = 0.45;
 const TELEMETRY_SPEED_MIN_VISIBLE_KMH = 0.5;
 const TELEMETRY_SPEED_MAX_SAMPLE_GAP_SEC = 15;
 const OPENSKY_REFRESH_MS = 15000;
+const HIGH_VALUE_OBJECTIVE_IDS = ["DRONE"];
 const OPENSKY_LAYER_STORAGE_KEY = "robiotec.opensky.enabled";
 const ARCOM_CONCESSION_MIN_ZOOM = Number.isFinite(Number(config.arcomMinZoom)) ? Math.max(1, Math.min(24, Number(config.arcomMinZoom))) : 11;
 const ARCOM_CONCESSION_VIEW_LIMIT = 120;
@@ -560,6 +561,9 @@ let cameraAdminLastGeneratedStreamUrl = "";
 const mapMarkers = new Map();
 const locationMarkers = new Map();
 const aircraftMarkers = new Map();
+const vehicleTracks = new Map();
+const objectiveMarkers = new Map();
+const highValueObjectiveHistory = new Map();
 let openskyIntervalId = null;
 let registerMapInstance = null;
 let registerMapMarker = null;
@@ -6398,9 +6402,124 @@ function buildSynchronizedTelemetrySnapshot(items) {
 }
 
 function formatLocationCoordinate(value) {
+  if (value === null || value === undefined) return "--";
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "--";
   return numeric.toFixed(6);
+}
+
+function objectiveTimestampMs(value) {
+  const parsed = Date.parse(String(value || "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildObjectiveHistoryPoint(payload) {
+  const data = payload && typeof payload.data === "object" ? payload.data : {};
+  const concession = payload && typeof payload.concession === "object" ? payload.concession : null;
+  return {
+    id: String(data.id || "").trim(),
+    lat: Number(data.latitud),
+    lon: Number(data.longitud),
+    updated_at: String(data.updated_at || "").trim(),
+    ts: objectiveTimestampMs(data.updated_at),
+    concession: concession
+      ? {
+          nombre_concesion: String(concession.nombre_concesion || "").trim(),
+          codigo_catastral: String(concession.codigo_catastral || "").trim(),
+          estado_actual: String(concession.estado_actual || "").trim(),
+        }
+      : null,
+  };
+}
+
+function buildObjectivePopupMarkup(payload) {
+  const point = buildObjectiveHistoryPoint(payload);
+  const concession = point.concession;
+  return `
+    <strong>OBJETIVO DE VALOR · ${escapeHtml(point.id || "OBJETIVO")}</strong><br>
+    Lat: ${formatLocationCoordinate(point.lat)}<br>
+    Lon: ${formatLocationCoordinate(point.lon)}<br>
+    Actualizado: ${escapeHtml(point.updated_at || "--")}<br>
+    Concesión minera: ${concession ? "Sí" : "No"}<br>
+    ${concession ? `Concesión: ${escapeHtml(concession.nombre_concesion || "--")}<br>` : ""}
+    ${concession && concession.codigo_catastral ? `Código: ${escapeHtml(concession.codigo_catastral)}<br>` : ""}
+    ${concession && concession.estado_actual ? `Estado: ${escapeHtml(concession.estado_actual)}` : ""}
+  `;
+}
+
+function objectivePointKey(point) {
+  if (!point || !point.id) return "";
+  return [
+    point.id,
+    Number.isFinite(point.lat) ? point.lat.toFixed(6) : "",
+    Number.isFinite(point.lon) ? point.lon.toFixed(6) : "",
+    point.updated_at || "",
+  ].join("|");
+}
+
+function syncHighValueObjectiveHistory(payload) {
+  const point = buildObjectiveHistoryPoint(payload);
+  if (!point.id || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return;
+
+  const currentHistory = highValueObjectiveHistory.get(point.id) || [];
+  const lastPoint = currentHistory[currentHistory.length - 1] || null;
+  const samePoint = lastPoint
+    && lastPoint.lat === point.lat
+    && lastPoint.lon === point.lon
+    && lastPoint.updated_at === point.updated_at;
+  if (!samePoint) {
+    currentHistory.push(point);
+    highValueObjectiveHistory.set(point.id, currentHistory);
+  }
+}
+
+function syncHighValueObjectiveMarker(payload) {
+  if (!mapInstance || typeof window.L === "undefined") return;
+
+  const point = buildObjectiveHistoryPoint(payload);
+  if (!point.id || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return;
+
+  const markerKey = objectivePointKey(point);
+  if (!markerKey) return;
+
+  let marker = objectiveMarkers.get(markerKey);
+  if (!marker) {
+    const inConcession = Boolean(point.concession);
+    marker = window.L.circleMarker([point.lat, point.lon], {
+      radius: inConcession ? 8 : 6,
+      color: inConcession ? "#f43f5e" : "#f59e0b",
+      weight: 2,
+      fillColor: inConcession ? "#fb7185" : "#fbbf24",
+      fillOpacity: 0.9,
+    }).addTo(mapInstance);
+    objectiveMarkers.set(markerKey, marker);
+  }
+
+  bindPrettyTooltip(marker, `OBJETIVO · ${point.id} · ${point.concession ? "CONCESION" : "SIN CONCESION"}`);
+  bindPrettyPopup(marker, buildObjectivePopupMarkup(payload));
+}
+
+async function refreshHighValueObjectives() {
+  if (!mapInstance || typeof window.L === "undefined") return;
+
+  await Promise.all(HIGH_VALUE_OBJECTIVE_IDS.map(async (objetivoId) => {
+    try {
+      const payload = await fetchJson(`/api/objetivos/${encodeURIComponent(objetivoId)}`, { timeoutMs: 4000 });
+      if (!payload || payload.found !== true || !payload.data) return;
+      syncHighValueObjectiveHistory(payload);
+      syncHighValueObjectiveMarker(payload);
+    } catch (error) {}
+  }));
+}
+
+function clearHighValueObjectives() {
+  for (const marker of objectiveMarkers.values()) {
+    if (mapInstance) {
+      mapInstance.removeLayer(marker);
+    }
+  }
+  objectiveMarkers.clear();
+  highValueObjectiveHistory.clear();
 }
 
 function locationCapabilityTags(device) {
@@ -7468,7 +7587,7 @@ function resolveTelemetryTimestamp(item) {
 
 function resolveTelemetrySpeed(item) {
   const speed = toFiniteNumber(item && item.speed);
-  return speed !== null && speed > 0 ? speed : 0;
+  return speed !== null && speed > 0 ? speed : null;
 }
 
 function miningConcessionForItem(item) {
@@ -7784,10 +7903,10 @@ function renderTelemetryFocus(items) {
   const motionStats = [
     { label: "ID API",      value: String(extra.api_device_id || extra.gps_api_id || "--") },
     { label: "Hora",        value: hora },
-    { label: "Velocidad",   value: formatTelemetryValue(speed, " m/s") },
-    { label: "Altitud",     value: formatTelemetryValue(item.altitude ?? 0, " m") },
-    { label: "Latitud",     value: formatLocationCoordinate(item.lat ?? 0) },
-    { label: "Longitud",    value: formatLocationCoordinate(item.lon ?? 0) },
+    { label: "Ground Speed", value: formatTelemetryValue(speed, " m/s") },
+    { label: "Altitud Elipsoidal", value: formatTelemetryValue(item.altitude ?? null, " m") },
+    { label: "Latitud",     value: formatLocationCoordinate(item.lat ?? null) },
+    { label: "Longitud",    value: formatLocationCoordinate(item.lon ?? null) },
     { label: "Estado",      value: armedLabel },
     { label: "Sistema",     value: sysStatusLabel },
     { label: "Fix GPS",     value: gpsFixLabel },
@@ -7889,6 +8008,11 @@ function updateMap(items) {
   mapInstance.invalidateSize();
 
   const visibleItems = getVisibleTelemetryItems(items);
+  if (Array.isArray(visibleItems)) {
+    visibleItems.forEach((item) => {
+      syncDroneTrack(item);
+    });
+  }
   const valid = Array.isArray(visibleItems)
     ? visibleItems.filter((item) => hasValidCoordinates(item))
     : [];
@@ -7947,10 +8071,10 @@ function updateMap(items) {
       Telemetría: ${String(item.freshness || "unavailable").toUpperCase()}<br>
       Lat: ${lat.toFixed(6)}<br>
       Lon: ${lon.toFixed(6)}<br>
-      Velocidad: ${formatTelemetryValue(resolveTelemetrySpeed(item), " m/s")}<br>
+      Ground Speed: ${formatTelemetryValue(resolveTelemetrySpeed(item), " m/s")}<br>
       Hora: ${escapeHtml(resolveTelemetryTimestamp(item).timeLabel)}<br>
       Rumbo: ${formatTelemetryValue(item.heading, "°")}<br>
-      Altitud: ${formatTelemetryValue(item.altitude, " m")}<br>
+      Altitud Elipsoidal: ${formatTelemetryValue(item.altitude, " m")}<br>
       ${item.notes ? `Notas: ${String(item.notes)}<br>` : ""}
       ${telemetryHighlights(item) || "Sin detalles extendidos"}
     `);
@@ -7994,13 +8118,201 @@ async function refreshTelemetry() {
     }
     syncTelemetryDeviceFilter(lastTelemetrySnapshot);
     updateMap(lastTelemetrySnapshot);
+    await refreshHighValueObjectives();
   } catch (error) {
     if (telemetryOverlaySourceKind === "telemetry") {
       syncTelemetryMapOverlayFromTelemetrySelection(lastTelemetrySnapshot);
     }
     syncTelemetryDeviceFilter(lastTelemetrySnapshot);
     updateMap(lastTelemetrySnapshot);
+    await refreshHighValueObjectives();
   }
+}
+
+const TRACK_STYLE_FLYING_DRONE = { color: "#22d3ee", weight: 2.5, opacity: 0.92 };
+const TRACK_STYLE_COMPLETED_DRONE = { color: "#f97316", weight: 2.2, opacity: 0.88 };
+
+function getDroneTrackStore(item) {
+  const deviceId = String(item && item.device_id || "").trim();
+  if (!deviceId) return null;
+
+  let store = vehicleTracks.get(deviceId);
+  if (!store) {
+    store = {
+      kind: "drone",
+      deviceId,
+      label: telemetryLabel(item) || deviceId,
+      activeFlight: null,
+      completedFlights: [],
+    };
+    vehicleTracks.set(deviceId, store);
+  } else {
+    store.label = telemetryLabel(item) || deviceId;
+  }
+  return store;
+}
+
+function resolveTelemetryTrackTimestampMs(item) {
+  const { epochSec } = resolveTelemetryTimestamp(item);
+  if (epochSec !== null) {
+    return Math.round(epochSec * 1000);
+  }
+  const extra = item && typeof item.extra === "object" && item.extra ? item.extra : {};
+  const fallbackTs = Number(extra.last_update_ts || item?.source_ts || item?.received_ts || 0);
+  if (Number.isFinite(fallbackTs) && fallbackTs > 0) {
+    return Math.round((fallbackTs > 99999999999 ? fallbackTs / 1000 : fallbackTs) * 1000);
+  }
+  return Date.now();
+}
+
+function removeDroneFlightPolyline(flight) {
+  if (!flight || !flight.polyline || !mapInstance) return;
+  mapInstance.removeLayer(flight.polyline);
+}
+
+function startDroneFlight(store, item, timestampMs) {
+  if (!mapInstance || typeof window.L === "undefined") return null;
+
+  if (store.activeFlight && store.activeFlight.polyline) {
+    removeDroneFlightPolyline(store.activeFlight);
+  }
+
+  const flight = {
+    device_id: store.deviceId,
+    label: telemetryLabel(item) || store.deviceId,
+    kind: "drone",
+    state: "armed",
+    started_at: timestampMs,
+    ended_at: null,
+    points: [],
+    polyline: window.L.polyline([], TRACK_STYLE_FLYING_DRONE).addTo(mapInstance),
+  };
+  store.activeFlight = flight;
+  return flight;
+}
+
+function appendDroneTrackPoint(flight, item, timestampMs) {
+  if (!flight || !hasValidCoordinates(item)) return;
+
+  const lat = Number(item.lat);
+  const lon = Number(item.lon);
+  const lastPoint = flight.points[flight.points.length - 1];
+  if (lastPoint && lastPoint.lat === lat && lastPoint.lon === lon) {
+    return;
+  }
+
+  flight.points.push({
+    lat,
+    lon,
+    altitude: toFiniteNumber(item.altitude),
+    speed: resolveTelemetrySpeed(item),
+    heading: toFiniteNumber(item.heading),
+    ts: timestampMs,
+  });
+
+  if (flight.polyline) {
+    flight.polyline.setLatLngs(flight.points.map((point) => [point.lat, point.lon]));
+  }
+}
+
+function finalizeDroneFlight(store, timestampMs) {
+  const flight = store && store.activeFlight;
+  if (!flight) return;
+
+  if (flight.points.length < 2) {
+    removeDroneFlightPolyline(flight);
+    store.activeFlight = null;
+    return;
+  }
+
+  flight.state = "disarmed";
+  flight.ended_at = timestampMs;
+  if (flight.polyline) {
+    flight.polyline.setStyle(TRACK_STYLE_COMPLETED_DRONE);
+  }
+  store.completedFlights.push(flight);
+  store.activeFlight = null;
+}
+
+function syncDroneTrack(item) {
+  if (!item || telemetryMarkerKind(item) !== "drone") return;
+
+  const extra = item && typeof item.extra === "object" && item.extra ? item.extra : {};
+  if (extra.armed !== true && extra.armed !== false) return;
+
+  const store = getDroneTrackStore(item);
+  if (!store) return;
+
+  const timestampMs = resolveTelemetryTrackTimestampMs(item);
+  if (extra.armed === true) {
+    const activeFlight = store.activeFlight || startDroneFlight(store, item, timestampMs);
+    appendDroneTrackPoint(activeFlight, item, timestampMs);
+    return;
+  }
+
+  if (extra.armed === false) {
+    finalizeDroneFlight(store, timestampMs);
+  }
+}
+
+function exportAndClearTracks() {
+  const flights = [];
+  const objectives = [];
+
+  for (const store of vehicleTracks.values()) {
+    if (!store || !Array.isArray(store.completedFlights)) continue;
+    for (const flight of store.completedFlights) {
+      if (!Array.isArray(flight.points) || flight.points.length === 0) continue;
+      flights.push({
+        device_id: flight.device_id,
+        label: flight.label,
+        kind: flight.kind,
+        state: flight.state,
+        started_at: flight.started_at,
+        ended_at: flight.ended_at,
+        points: flight.points,
+      });
+    }
+  }
+
+  for (const [objectiveId, points] of highValueObjectiveHistory.entries()) {
+    if (!Array.isArray(points) || points.length === 0) continue;
+    objectives.push({
+      id: objectiveId,
+      kind: "high_value_objective",
+      points,
+    });
+  }
+
+  if (flights.length === 0 && objectives.length === 0) {
+    return;
+  }
+
+  const exportPayload = {
+    exported_at: new Date().toISOString(),
+    flights,
+    objectives,
+  };
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rutas_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  for (const [deviceId, store] of vehicleTracks.entries()) {
+    if (store.activeFlight && store.activeFlight.polyline) {
+      removeDroneFlightPolyline(store.activeFlight);
+    }
+    for (const flight of store.completedFlights || []) {
+      removeDroneFlightPolyline(flight);
+    }
+    vehicleTracks.delete(deviceId);
+  }
+  clearHighValueObjectives();
 }
 
 function clearAircraftMarkers() {
@@ -8640,6 +8952,11 @@ if (telemetryFocusCard) {
 
 if (telemetryMapRecenter) {
   telemetryMapRecenter.addEventListener("click", requestTelemetryMapRecenter);
+}
+
+const telemetryTrackExport = document.getElementById("telemetry-track-export");
+if (telemetryTrackExport) {
+  telemetryTrackExport.addEventListener("click", exportAndClearTracks);
 }
 
 if (telemetryMiningToggle) {

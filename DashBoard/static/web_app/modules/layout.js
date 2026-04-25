@@ -78,7 +78,17 @@ export function createLayoutModule(deps) {
     const rawHeight = windowObj.visualViewport && Number.isFinite(windowObj.visualViewport.height)
       ? windowObj.visualViewport.height
       : windowObj.innerHeight;
-    const nextHeight = Math.max(480, Math.round(rawHeight || windowObj.innerHeight || 0));
+    const rootStyles = windowObj.getComputedStyle
+      ? windowObj.getComputedStyle(documentObj.documentElement)
+      : null;
+    const configuredZoom = rootStyles
+      ? Number.parseFloat(rootStyles.getPropertyValue("--app-zoom-scale"))
+      : Number.NaN;
+    const computedZoom = rootStyles ? Number.parseFloat(rootStyles.zoom) : Number.NaN;
+    const appZoom = Number.isFinite(configuredZoom) && configuredZoom > 0
+      ? configuredZoom
+      : (Number.isFinite(computedZoom) && computedZoom > 0 ? computedZoom : 1);
+    const nextHeight = Math.max(480, Math.round((rawHeight || windowObj.innerHeight || 0) / appZoom));
     documentObj.documentElement.style.setProperty("--app-height", `${nextHeight}px`);
 
     const mapInstance = getMapInstance();

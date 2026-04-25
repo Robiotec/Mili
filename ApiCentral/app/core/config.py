@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # ── General ──
     PUBLIC_HOST: str
     API_PORT: int
+    CORS_EXTRA_ORIGINS: str = ""  # comma-separated extra allowed origins
 
     # ── JWT ──
     SECRET_KEY: str = Field(..., description="Clave secreta para JWT. Mínimo 32 caracteres.")
@@ -25,11 +26,15 @@ class Settings(BaseSettings):
     MEDIAMTX_API_USERNAME: Optional[str] = None
     MEDIAMTX_API_PASSWORD: Optional[str] = None
 
-    # ── OpenSky Network ──
-    OPENSKY_LAMIN: float = -5.0
-    OPENSKY_LOMIN: float = -81.0
-    OPENSKY_LAMAX: float = 2.0
-    OPENSKY_LOMAX: float = -75.0
+    # ── airplanes.live (reemplaza OpenSky) ──
+    # Consulta 1: Ecuador central/norte
+    AIRPLANES_LAT: float = -1.8
+    AIRPLANES_LON: float = -78.2
+    AIRPLANES_RADIUS_NM: int = 250
+    # Consulta 2: Ecuador sur / frontera Perú (poner RADIUS=0 para deshabilitar)
+    AIRPLANES_LAT2: float = -5.5
+    AIRPLANES_LON2: float = -78.5
+    AIRPLANES_RADIUS_NM2: int = 200
 
     # ── PostgreSQL ──
     DB_HOST: str

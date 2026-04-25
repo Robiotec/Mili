@@ -303,7 +303,7 @@ class DummyDroneSource:
 class GPSApiClient:
     def __init__(
         self,
-        base_url: str = "http://207.246.116.8:8002",
+        base_url: str = "",
         timeout: float = 5.0,
         max_retries: int = 3,
         backoff_factor: float = 0.5,
@@ -589,9 +589,7 @@ def print_menu() -> None:
 
 
 def run_menu() -> None:
-    base_url = input("Base URL de la API [http://207.246.116.8:8002]: ").strip()
-    if not base_url:
-        base_url = "http://207.246.116.8:8002"
+    base_url = input("Base URL de la API: ").strip()
 
     api_client = GPSApiClient(base_url=base_url)
 

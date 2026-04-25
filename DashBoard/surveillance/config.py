@@ -24,6 +24,7 @@ TOP_LEVEL_YAML_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*:")
 EMBEDDED_M3U8_PATTERN = re.compile(r"""['"](?P<path>[^'"]+\.m3u8(?:\?[^'"]*)?)['"]""", re.IGNORECASE)
 HTTP_SOURCE_SNIFF_TIMEOUT_SEC = 4.0
 HTTP_SOURCE_SNIFF_BYTES = 65536
+MEDIAMTX_HOST = os.getenv("MEDIAMTX_HOST", "")
 MEDIAMTX_WEBRTC_PORT = os.getenv("MEDIAMTX_WEBRTC_PORT", "8989")
 MEDIAMTX_RTSP_PORT = os.getenv("MEDIAMTX_RTSP_PORT", "8654")
 

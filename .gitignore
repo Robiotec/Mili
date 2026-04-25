@@ -1,1 +1,5 @@
 ARCOM/
+
+# Environment files with credentials — never commit these
+.env
+**/.env

@@ -1,3 +1,7 @@
+# Environment files with credentials — never commit these
+.env
+**/.env
+
 # Python-generated files
 __pycache__/
 *.py[oc]
