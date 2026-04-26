@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,7 +36,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -50,4 +51,7 @@ app.include_router(objetivo.router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8004, reload=True)
+    api_host = os.getenv("API_HOST", "0.0.0.0").strip() or "0.0.0.0"
+    api_port = int(os.getenv("API_PORT", "8004"))
+    api_reload = os.getenv("API_RELOAD", "false").strip().lower() in {"1", "true", "yes", "on"}
+    uvicorn.run("app.main:app", host=api_host, port=api_port, reload=api_reload)

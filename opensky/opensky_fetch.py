@@ -12,21 +12,33 @@ Intervalo: 15 s (rate limit: 1 req/s, sin clave).
 
 import json
 import logging
+import os
 import time
 from pathlib import Path
 
 import requests
 
-# Centro de Ecuador + radio para cubrir todo el territorio nacional
-AIRPLANES_URL = "https://api.airplanes.live/v2/point/{lat}/{lon}/{radius}"
+BASE_DIR = Path(__file__).resolve().parent
+AIRPLANES_URL = os.getenv(
+    "AIRPLANES_URL",
+    "https://api.airplanes.live/v2/point/{lat}/{lon}/{radius}",
+).strip()
 QUERY_POINTS = [
-    {"lat": -1.8, "lon": -78.2, "radius": 250},  # Ecuador central/norte
-    {"lat": -5.5, "lon": -78.5, "radius": 200},  # Ecuador sur / frontera Perú
+    {
+        "lat": float(os.getenv("AIRPLANES_LAT", "-1.8")),
+        "lon": float(os.getenv("AIRPLANES_LON", "-78.2")),
+        "radius": max(0, int(os.getenv("AIRPLANES_RADIUS_NM", "250"))),
+    },
+    {
+        "lat": float(os.getenv("AIRPLANES_LAT2", "-5.5")),
+        "lon": float(os.getenv("AIRPLANES_LON2", "-78.5")),
+        "radius": max(0, int(os.getenv("AIRPLANES_RADIUS_NM2", "200"))),
+    },
 ]
 
-INTERVAL_SEC = 15
-OUT_FILE = Path(__file__).parent / "opensky_data.json"
-REQUEST_TIMEOUT = 12
+INTERVAL_SEC = max(int(os.getenv("OPENSKY_INTERVAL_SEC", "15")), 1)
+OUT_FILE = Path(os.getenv("OPENSKY_DATA_FILE", str(BASE_DIR / "opensky_data.json"))).expanduser()
+REQUEST_TIMEOUT = max(float(os.getenv("OPENSKY_REQUEST_TIMEOUT_SEC", "12")), 1.0)
 
 KNOTS_TO_MS = 0.514444
 FEET_TO_M = 0.3048
@@ -101,6 +113,7 @@ def fetch_states() -> list[dict]:
 
 def save(aircraft: list[dict]) -> None:
     payload = {"ts": int(time.time()), "aircraft": aircraft}
+    OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = OUT_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload), encoding="utf-8")
     tmp.replace(OUT_FILE)

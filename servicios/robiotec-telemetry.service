@@ -1,0 +1,16 @@
+[Unit]
+Description=Robiotec MAVLink Telemetry Bridge
+After=network.target mavlink-router.service apicentral.service
+Wants=mavlink-router.service apicentral.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/robiotec/SVI/servicios/robiotec-telemetry.sh
+Restart=always
+RestartSec=5
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

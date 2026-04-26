@@ -1,0 +1,13 @@
+[Unit]
+Description=ARCOM Catastro Minero - Actualización semanal
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/robiotec/SVI/servicios/arcom_update.sh
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

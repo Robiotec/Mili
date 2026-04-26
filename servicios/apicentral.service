@@ -1,0 +1,15 @@
+[Unit]
+Description=API Central FastAPI Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/robiotec/SVI/servicios/apicentral.sh
+Restart=always
+RestartSec=5
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

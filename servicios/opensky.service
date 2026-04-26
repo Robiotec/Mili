@@ -1,0 +1,15 @@
+[Unit]
+Description=Robiotec Airplanes Feed Cache
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/robiotec/SVI/servicios/opensky.sh
+Restart=always
+RestartSec=5
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

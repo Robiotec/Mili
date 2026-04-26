@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -5,6 +6,7 @@ from typing import Optional
 router = APIRouter()
 
 gps_data_store: dict[str, dict] = {}
+LOGGER = logging.getLogger(__name__)
 
 
 class GPSPayload(BaseModel):
@@ -39,9 +41,19 @@ async def update_gps(vehicle_id: str, data: GPSPayload):
         "vehicle_id": vehicle_id,
         **data.model_dump(exclude_none=False),
     }
-    print(f"[{vehicle_id}] lat={data.lat} lon={data.lon} alt={data.altitude}m "
-          f"spd={data.speed}km/h hdg={data.heading}° bat={data.battery_remaining_pct}% "
-          f"armed={data.armed} mode={data.mode} sats={data.satellites_visible}")
+    LOGGER.info(
+        "[%s] lat=%s lon=%s alt=%sm spd=%skm/h hdg=%s° bat=%s%% armed=%s mode=%s sats=%s",
+        vehicle_id,
+        data.lat,
+        data.lon,
+        data.altitude,
+        data.speed,
+        data.heading,
+        data.battery_remaining_pct,
+        data.armed,
+        data.mode,
+        data.satellites_visible,
+    )
     return {"message": "Data received", "vehicle_id": vehicle_id}
 
 

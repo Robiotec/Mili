@@ -47,6 +47,41 @@ class ArcomConcessionStore:
                 return _serialize_concession(row, geometry=None)
         return None
 
+    def get_all_concessions(self) -> dict[str, Any]:
+        query = """
+            SELECT
+                c.fid,
+                c.nam,
+                c.com,
+                c.eac,
+                c.ttm,
+                c.frm,
+                c.tipo_mineral,
+                c.rgm,
+                c.ach,
+                c.dpa_despro,
+                c.dpa_descan,
+                c.dpa_despar,
+                c.geom
+            FROM catastro_minero AS c
+            ORDER BY c.fid ASC
+        """
+        rows = self._query_rows(query, ())
+        features = []
+        for row in rows:
+            geometry = _decode_gpkg_geometry(row["geom"])
+            features.append({
+                "type": "Feature",
+                "id": row["fid"],
+                "properties": _serialize_concession(row, geometry=None),
+                "geometry": geometry,
+            })
+        return {
+            "type": "FeatureCollection",
+            "features": features,
+            "meta": {"returned": len(features), "source": str(self.gpkg_path)},
+        }
+
     def get_concessions_for_bbox(
         self,
         *,

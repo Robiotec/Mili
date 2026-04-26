@@ -1,0 +1,16 @@
+[Unit]
+Description=Robiotec Objetivos Monitor
+After=network.target apicentral.service
+Wants=apicentral.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/robiotec/SVI/servicios/objetivos.sh
+Restart=always
+RestartSec=5
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

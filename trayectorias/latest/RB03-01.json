@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "device_id": "RB03-01",
+  "label": "ROBIOTEC RB03",
+  "kind": "drone",
+  "updated_at": "2026-04-26T13:32:39.208840+00:00",
+  "flights": [
+    {
+      "device_id": "RB03-01",
+      "label": "ROBIOTEC RB03",
+      "kind": "drone",
+      "state": "armed",
+      "started_at": 1777170873211,
+      "ended_at": null,
+      "points": [
+        {
+          "lat": -1.2510997,
+          "lon": -79.0310489,
+          "altitude": 36.82,
+          "speed": null,
+          "heading": 60.0,
+          "ts": 1777170873211
+        }
+      ]
+    }
+  ]
+}

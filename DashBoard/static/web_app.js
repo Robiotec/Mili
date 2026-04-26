@@ -29,6 +29,7 @@ const TELEMETRY_SPEED_ZERO_DECAY_FACTOR = 0.45;
 const TELEMETRY_SPEED_MIN_VISIBLE_KMH = 0.5;
 const TELEMETRY_SPEED_MAX_SAMPLE_GAP_SEC = 15;
 const OPENSKY_REFRESH_MS = 15000;
+const AIRCRAFT_VIEWPORT_REFRESH_DELAY_MS = 700;
 const HIGH_VALUE_OBJECTIVE_IDS = ["DRONE"];
 const OPENSKY_LAYER_STORAGE_KEY = "robiotec.opensky.enabled";
 const ARCOM_CONCESSION_MIN_ZOOM = Number.isFinite(Number(config.arcomMinZoom)) ? Math.max(1, Math.min(24, Number(config.arcomMinZoom))) : 9;
@@ -54,6 +55,12 @@ const SATELLITE_TILE_ATTRIBUTION = THUNDERFOREST_API_KEY
 const STREET_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const STREET_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const CAMERA_PICKER_MAX_ZOOM = 18;
+const TELEMETRY_MAP_MIN_ZOOM = Number.isFinite(Number(config.telemetryMapMinZoom))
+  ? Math.max(1, Math.min(24, Number(config.telemetryMapMinZoom)))
+  : 6;
+const TELEMETRY_MAP_MAX_ZOOM = Number.isFinite(Number(config.telemetryMapMaxZoom))
+  ? Math.max(TELEMETRY_MAP_MIN_ZOOM, Math.min(24, Number(config.telemetryMapMaxZoom)))
+  : 18;
 const DARK_TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const DARK_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 const GRAY_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
@@ -64,7 +71,7 @@ const TELEMETRY_MAP_STYLE_DEFINITIONS = {
   gray: {
     baseUrl: GRAY_TILE_URL,
     baseOptions: {
-      maxZoom: 16,
+      maxZoom: TELEMETRY_MAP_MAX_ZOOM,
       maxNativeZoom: 16,
       attribution: GRAY_TILE_ATTRIBUTION,
     },
@@ -72,7 +79,7 @@ const TELEMETRY_MAP_STYLE_DEFINITIONS = {
   satellite: {
     baseUrl: SATELLITE_TILE_URL,
     baseOptions: {
-      maxZoom: 22,
+      maxZoom: TELEMETRY_MAP_MAX_ZOOM,
       maxNativeZoom: THUNDERFOREST_API_KEY ? 22 : 19,
       apikey: THUNDERFOREST_API_KEY,
       detectRetina: true,
@@ -80,7 +87,7 @@ const TELEMETRY_MAP_STYLE_DEFINITIONS = {
     },
     overlayUrl: SATELLITE_LABELS_TILE_URL,
     overlayOptions: {
-      maxZoom: 22,
+      maxZoom: TELEMETRY_MAP_MAX_ZOOM,
       maxNativeZoom: 19,
       attribution: "",
       pane: "overlayPane",
@@ -91,7 +98,8 @@ const TELEMETRY_MAP_STYLE_DEFINITIONS = {
     baseUrl: DARK_TILE_URL,
     baseOptions: {
       subdomains: "abcd",
-      maxZoom: 20,
+      maxZoom: TELEMETRY_MAP_MAX_ZOOM,
+      maxNativeZoom: 20,
       detectRetina: true,
       attribution: DARK_TILE_ATTRIBUTION,
     },
@@ -99,7 +107,7 @@ const TELEMETRY_MAP_STYLE_DEFINITIONS = {
   relief: {
     baseUrl: RELIEF_TILE_URL,
     baseOptions: {
-      maxZoom: 18,
+      maxZoom: TELEMETRY_MAP_MAX_ZOOM,
       maxNativeZoom: 18,
       attribution: RELIEF_TILE_ATTRIBUTION,
     },
@@ -587,6 +595,10 @@ const objectiveMarkers = new Map();
 const highValueObjectiveHistory = new Map();
 const dismissedHighValueObjectiveKeys = new Map();
 let openskyIntervalId = null;
+let aircraftViewportRefreshTimerId = null;
+let aircraftViewportRequestId = 0;
+let lastAircraftViewportKey = "";
+let droneTracksHydrated = false;
 let registerMapInstance = null;
 let registerMapMarker = null;
 let registerMapViewportLoaded = false;
@@ -2760,6 +2772,44 @@ function syncAudioFromVideoElement(cameraName) {
   applyAudioState();
 }
 
+function setupCameraCardFloat(card) {
+  const floatBtn = card.querySelector(".camera-float-btn");
+  const dragHandle = card.querySelector(".camera-float-drag-handle");
+  if (!floatBtn || !dragHandle) return;
+
+  floatBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (card.classList.contains("is-floating")) {
+      card.classList.remove("is-floating");
+      card.style.left = "";
+      card.style.top = "";
+    } else {
+      const w = 480, h = 270;
+      card.style.left = `${Math.max(0, window.innerWidth - w - 20)}px`;
+      card.style.top = `${Math.max(0, window.innerHeight - h - 20)}px`;
+      card.classList.add("is-floating");
+    }
+  });
+
+  let dragState = null;
+  dragHandle.addEventListener("mousedown", (e) => {
+    if (!card.classList.contains("is-floating")) return;
+    const rect = card.getBoundingClientRect();
+    dragState = { startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top };
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    const newLeft = Math.max(0, Math.min(window.innerWidth - card.offsetWidth, dragState.origLeft + dx));
+    const newTop = Math.max(0, Math.min(window.innerHeight - card.offsetHeight, dragState.origTop + dy));
+    card.style.left = `${newLeft}px`;
+    card.style.top = `${newTop}px`;
+  });
+  document.addEventListener("mouseup", () => { dragState = null; });
+}
+
 function buildCameraCard(camera) {
   const card = document.createElement("section");
   card.className = "camera-card";
@@ -2772,6 +2822,8 @@ function buildCameraCard(camera) {
     <video class="video" id="video-${camera.dom_id}" autoplay playsinline muted></video>
     <div class="camera-error" style="display:none;color:#e74c3c;font-size:0.95em;padding:4px 0;"></div>
     <button class="camera-card-close" id="card-close-${camera.dom_id}" type="button" hidden aria-label="Cerrar cámara ${getCameraDisplayName(camera)}">×</button>
+    <button class="camera-float-btn" type="button" aria-label="Flotar / anclar video" title="Flotar video">⧉</button>
+    <div class="camera-float-drag-handle"></div>
     <div class="camera-meta">
       <div class="camera-topline">
         <div class="camera-name">${getCameraDisplayName(camera, { uppercase: true })}</div>
@@ -2784,6 +2836,7 @@ function buildCameraCard(camera) {
       </div>
     </div>
   `;
+  setupCameraCardFloat(card);
   return card;
 }
 
@@ -6492,6 +6545,7 @@ function syncHighValueObjectiveHistory(payload) {
   if (dismissedHighValueObjectiveKeys.get(point.id) === pointKey) return;
 
   const currentHistory = highValueObjectiveHistory.get(point.id) || [];
+  if (currentHistory.some((historyPoint) => objectivePointKey(historyPoint) === pointKey)) return;
   const lastPoint = currentHistory[currentHistory.length - 1] || null;
   const samePoint = lastPoint
     && lastPoint.lat === point.lat
@@ -6537,8 +6591,13 @@ async function refreshHighValueObjectives() {
     try {
       const payload = await fetchJson(`/api/objetivos/${encodeURIComponent(objetivoId)}`, { timeoutMs: 4000 });
       if (!payload || payload.found !== true || !payload.data) return;
-      syncHighValueObjectiveHistory(payload);
-      syncHighValueObjectiveMarker(payload);
+      const objectivePoints = Array.isArray(payload.points) && payload.points.length > 0
+        ? payload.points
+        : [payload];
+      objectivePoints.forEach((pointPayload) => {
+        syncHighValueObjectiveHistory(pointPayload);
+        syncHighValueObjectiveMarker(pointPayload);
+      });
     } catch (error) {}
   }));
 }
@@ -6615,7 +6674,9 @@ function ensureLocationsMap() {
   locationsMapInstance = window.L.map(locationsMap, {
     zoomControl: true,
     attributionControl: true,
-  }).setView([0, 0], 2);
+    minZoom: TELEMETRY_MAP_MIN_ZOOM,
+    maxZoom: TELEMETRY_MAP_MAX_ZOOM,
+  }).setView([0, 0], TELEMETRY_MAP_MIN_ZOOM);
 
   addSatelliteTileLayers(locationsMapInstance);
   return true;
@@ -8023,6 +8084,8 @@ function ensureMap() {
   mapInstance = window.L.map(telemetryMap, {
     zoomControl: true,
     attributionControl: true,
+    minZoom: TELEMETRY_MAP_MIN_ZOOM,
+    maxZoom: TELEMETRY_MAP_MAX_ZOOM,
   }).setView([0, 0], 2);
 
   applyTelemetryMapStyle(activeTelemetryMapStyle, { persist: false });
@@ -8037,12 +8100,15 @@ function ensureMap() {
   mapInstance.on("zoomstart", onManualMapInteraction);
   mapInstance.on("moveend", () => {
     scheduleMiningConcessionsViewportRefresh();
+    scheduleAircraftViewportRefresh();
   });
   mapInstance.on("zoomend", () => {
     scheduleMiningConcessionsViewportRefresh();
+    scheduleAircraftViewportRefresh();
   });
   ensureMiningConcessionsLayer();
   applyMiningLayerVisibility();
+  void hydratePersistedDroneTracks();
   return true;
 }
 
@@ -8240,6 +8306,35 @@ function startDroneFlight(store, item, timestampMs) {
   return flight;
 }
 
+function serializeDroneFlight(flight) {
+  return {
+    device_id: flight.device_id,
+    label: flight.label,
+    kind: flight.kind || "drone",
+    state: flight.state,
+    started_at: flight.started_at,
+    ended_at: flight.ended_at,
+    points: Array.isArray(flight.points) ? flight.points : [],
+  };
+}
+
+function persistDroneTrackState(flight, state, point = null, timestampMs = Date.now()) {
+  if (!flight || !flight.device_id) return;
+  const payload = {
+    label: flight.label || flight.device_id,
+    state,
+    ts: timestampMs,
+    started_at: flight.started_at,
+    point,
+  };
+  fetchJson(`/api/tracks/drone/${encodeURIComponent(flight.device_id)}/point`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+    timeoutMs: 4000,
+  }).catch(() => {});
+}
+
 function appendDroneTrackPoint(flight, item, timestampMs) {
   if (!flight || !hasValidCoordinates(item)) return;
 
@@ -8250,14 +8345,16 @@ function appendDroneTrackPoint(flight, item, timestampMs) {
     return;
   }
 
-  flight.points.push({
+  const point = {
     lat,
     lon,
     altitude: toFiniteNumber(item.altitude),
     speed: resolveTelemetrySpeed(item),
     heading: toFiniteNumber(item.heading),
     ts: timestampMs,
-  });
+  };
+  flight.points.push(point);
+  persistDroneTrackState(flight, "armed", point, timestampMs);
 
   if (flight.polyline) {
     flight.polyline.setLatLngs(flight.points.map((point) => [point.lat, point.lon]));
@@ -8279,8 +8376,89 @@ function finalizeDroneFlight(store, timestampMs) {
   if (flight.polyline) {
     flight.polyline.setStyle(TRACK_STYLE_COMPLETED_DRONE);
   }
+  persistDroneTrackState(flight, "disarmed", null, timestampMs);
   store.completedFlights.push(flight);
   store.activeFlight = null;
+}
+
+function ensureDroneTrackStoreFromFlight(flight) {
+  const deviceId = String(flight && flight.device_id || "").trim();
+  if (!deviceId) return null;
+  let store = vehicleTracks.get(deviceId);
+  if (!store) {
+    store = {
+      kind: "drone",
+      deviceId,
+      label: String(flight.label || deviceId),
+      activeFlight: null,
+      completedFlights: [],
+    };
+    vehicleTracks.set(deviceId, store);
+  }
+  store.label = String(flight.label || deviceId);
+  return store;
+}
+
+function renderPersistedDroneFlight(rawFlight) {
+  if (!mapInstance || typeof window.L === "undefined") return;
+  if (!rawFlight || !Array.isArray(rawFlight.points) || rawFlight.points.length < 2) return;
+  const store = ensureDroneTrackStoreFromFlight(rawFlight);
+  if (!store) return;
+
+  const points = rawFlight.points
+    .map((point) => ({
+      lat: Number(point.lat),
+      lon: Number(point.lon),
+      altitude: toFiniteNumber(point.altitude),
+      speed: toFiniteNumber(point.speed),
+      heading: toFiniteNumber(point.heading),
+      ts: Number(point.ts),
+    }))
+    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+  if (points.length < 2) return;
+
+  const flight = {
+    device_id: store.deviceId,
+    label: String(rawFlight.label || store.label || store.deviceId),
+    kind: "drone",
+    state: rawFlight.state === "armed" ? "armed" : "disarmed",
+    started_at: Number(rawFlight.started_at || points[0].ts || Date.now()),
+    ended_at: rawFlight.ended_at === null || rawFlight.ended_at === undefined ? null : Number(rawFlight.ended_at),
+    points,
+    polyline: window.L.polyline(
+      points.map((point) => [point.lat, point.lon]),
+      rawFlight.state === "armed" ? TRACK_STYLE_FLYING_DRONE : TRACK_STYLE_COMPLETED_DRONE,
+    ).addTo(mapInstance),
+  };
+
+  if (flight.state === "armed") {
+    if (store.activeFlight && store.activeFlight.polyline) removeDroneFlightPolyline(store.activeFlight);
+    store.activeFlight = flight;
+    return;
+  }
+
+  const flightKey = `${flight.device_id}|${flight.started_at}|${flight.ended_at || ""}|${points.length}`;
+  const exists = store.completedFlights.some((existing) => (
+    `${existing.device_id}|${existing.started_at}|${existing.ended_at || ""}|${Array.isArray(existing.points) ? existing.points.length : 0}` === flightKey
+  ));
+  if (!exists) {
+    store.completedFlights.push(flight);
+  } else {
+    removeDroneFlightPolyline(flight);
+  }
+}
+
+async function hydratePersistedDroneTracks() {
+  if (droneTracksHydrated || !mapInstance) return;
+  droneTracksHydrated = true;
+  try {
+    const payload = await fetchJson("/api/tracks/drone", { timeoutMs: 5000 });
+    const tracks = Array.isArray(payload && payload.tracks) ? payload.tracks : [];
+    tracks.forEach((track) => {
+      const flights = Array.isArray(track && track.flights) ? track.flights : [];
+      flights.forEach(renderPersistedDroneFlight);
+    });
+  } catch (error) {}
 }
 
 async function clearTelemetryTracks() {
@@ -8293,6 +8471,13 @@ async function clearTelemetryTracks() {
     }
     vehicleTracks.delete(deviceId);
   }
+  droneTracksHydrated = false;
+  try {
+    await fetchJson("/api/tracks/drone/clear", {
+      method: "POST",
+      timeoutMs: 5000,
+    });
+  } catch (error) {}
   clearHighValueObjectives();
   await clearHighValueObjectiveSources();
 }
@@ -8318,33 +8503,68 @@ function syncDroneTrack(item) {
   }
 }
 
-function exportTracks() {
+async function exportTracks() {
   const flights = [];
   const objectives = [];
+  const flightKeys = new Set();
+  const objectiveKeys = new Set();
 
-  for (const store of vehicleTracks.values()) {
-    if (!store || !Array.isArray(store.completedFlights)) continue;
-    for (const flight of store.completedFlights) {
-      if (!Array.isArray(flight.points) || flight.points.length === 0) continue;
-      flights.push({
-        device_id: flight.device_id,
-        label: flight.label,
-        kind: flight.kind,
-        state: flight.state,
-        started_at: flight.started_at,
-        ended_at: flight.ended_at,
-        points: flight.points,
-      });
-    }
-  }
+  const addFlight = (flight) => {
+    if (!flight || !Array.isArray(flight.points) || flight.points.length === 0) return;
+    const serialized = serializeDroneFlight(flight);
+    const key = `${serialized.device_id}|${serialized.started_at}|${serialized.ended_at || ""}|${serialized.points.length}`;
+    if (flightKeys.has(key)) return;
+    flightKeys.add(key);
+    flights.push(serialized);
+  };
 
-  for (const [objectiveId, points] of highValueObjectiveHistory.entries()) {
-    if (!Array.isArray(points) || points.length === 0) continue;
+  const addObjective = (objectiveId, points) => {
+    if (!objectiveId || !Array.isArray(points) || points.length === 0) return;
+    const filteredPoints = [];
+    points.forEach((point) => {
+      const pointKey = objectivePointKey(point);
+      const scopedPointKey = `${objectiveId}|${pointKey}`;
+      if (!pointKey || objectiveKeys.has(scopedPointKey)) return;
+      objectiveKeys.add(scopedPointKey);
+      filteredPoints.push(point);
+    });
+    if (filteredPoints.length === 0) return;
     objectives.push({
       id: objectiveId,
       kind: "high_value_objective",
-      points,
+      points: filteredPoints,
     });
+  };
+
+  try {
+    const persistedTracks = await fetchJson("/api/tracks/drone", { timeoutMs: 5000 });
+    const tracks = Array.isArray(persistedTracks && persistedTracks.tracks) ? persistedTracks.tracks : [];
+    tracks.forEach((track) => {
+      const trackFlights = Array.isArray(track && track.flights) ? track.flights : [];
+      trackFlights.forEach(addFlight);
+    });
+  } catch (error) {}
+
+  for (const store of vehicleTracks.values()) {
+    if (!store) continue;
+    if (store.activeFlight) addFlight(store.activeFlight);
+    if (Array.isArray(store.completedFlights)) {
+      store.completedFlights.forEach(addFlight);
+    }
+  }
+
+  await Promise.all(HIGH_VALUE_OBJECTIVE_IDS.map(async (objectiveId) => {
+    try {
+      const payload = await fetchJson(`/api/objetivos/${encodeURIComponent(objectiveId)}`, { timeoutMs: 5000 });
+      const objectivePoints = Array.isArray(payload && payload.points)
+        ? payload.points.map(buildObjectiveHistoryPoint)
+        : [];
+      addObjective(objectiveId, objectivePoints);
+    } catch (error) {}
+  }));
+
+  for (const [objectiveId, points] of highValueObjectiveHistory.entries()) {
+    addObjective(objectiveId, points);
   }
 
   if (flights.length === 0 && objectives.length === 0) {
@@ -8368,18 +8588,43 @@ function exportTracks() {
 }
 
 function clearAircraftMarkers() {
+  if (aircraftViewportRefreshTimerId) {
+    clearTimeout(aircraftViewportRefreshTimerId);
+    aircraftViewportRefreshTimerId = null;
+  }
   for (const marker of aircraftMarkers.values()) {
     if (mapInstance) mapInstance.removeLayer(marker);
   }
   aircraftMarkers.clear();
+  lastAircraftViewportKey = "";
+}
+
+function aircraftViewportQuery() {
+  if (!mapInstance) return null;
+  const bounds = mapInstance.getBounds();
+  if (!bounds) return null;
+  const bbox = [
+    bounds.getWest().toFixed(6),
+    bounds.getSouth().toFixed(6),
+    bounds.getEast().toFixed(6),
+    bounds.getNorth().toFixed(6),
+  ].join(",");
+  return {
+    bbox,
+    key: `${bbox}|${mapInstance.getZoom()}`,
+  };
 }
 
 async function refreshOpenSky() {
   if (!mapInstance || typeof window.L === "undefined") return;
   if (document.visibilityState === "hidden") return;
   if (!openskyLayerEnabled) return;
+  const viewport = aircraftViewportQuery();
+  if (!viewport) return;
   try {
-    const data = await fetchJson("/api/opensky/states", { timeoutMs: 12000 });
+    const requestId = ++aircraftViewportRequestId;
+    const data = await fetchJson(`/api/aircraft/viewport?bbox=${encodeURIComponent(viewport.bbox)}`, { timeoutMs: 16000 });
+    if (requestId !== aircraftViewportRequestId) return;
     const states = Array.isArray(data && data.aircraft) ? data.aircraft : [];
     const nextIcaos = new Set();
     for (const s of states) {
@@ -8421,7 +8666,22 @@ async function refreshOpenSky() {
         aircraftMarkers.delete(icao);
       }
     }
+    lastAircraftViewportKey = viewport.key;
   } catch (_) {}
+}
+
+function scheduleAircraftViewportRefresh(delayMs = AIRCRAFT_VIEWPORT_REFRESH_DELAY_MS) {
+  if (!openskyLayerEnabled) return;
+  const viewport = aircraftViewportQuery();
+  if (!viewport) return;
+  if (viewport.key === lastAircraftViewportKey) return;
+  if (aircraftViewportRefreshTimerId) {
+    clearTimeout(aircraftViewportRefreshTimerId);
+  }
+  aircraftViewportRefreshTimerId = window.setTimeout(() => {
+    aircraftViewportRefreshTimerId = null;
+    void refreshOpenSky();
+  }, delayMs);
 }
 
 function stopAll() {

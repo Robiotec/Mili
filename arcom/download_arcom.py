@@ -13,6 +13,7 @@ Requiere:
 
 import csv
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -20,23 +21,25 @@ from pathlib import Path
 import requests
 
 
-LAYER_URL = (
+LAYER_URL = os.getenv(
+    "ARCOM_LAYER_URL",
     "https://geovisorm.controlrecursosyenergia.gob.ec"
-    "/arcgis/rest/services/Concesiones/CatastroMineroNacional_PSAD56/MapServer/0"
-)
+    "/arcgis/rest/services/Concesiones/CatastroMineroNacional_PSAD56/MapServer/0",
+).strip()
 QUERY_URL = f"{LAYER_URL}/query"
 
-OUT_DIR     = Path(__file__).parent
+OUT_DIR = Path(os.getenv("ARCOM_OUT_DIR", str(Path(__file__).parent))).expanduser()
 OUT_GEOJSON = OUT_DIR / "arcom_catastro.geojson"
-OUT_GPKG    = OUT_DIR / "arcom_catastro.gpkg"
-OUT_CSV     = OUT_DIR / "arcom_catastro_atributos.csv"
-OUT_REPORT  = OUT_DIR / "arcom_descarga_reporte.json"
+OUT_GPKG = OUT_DIR / "arcom_catastro.gpkg"
+OUT_CSV = OUT_DIR / "arcom_catastro_atributos.csv"
+OUT_REPORT = OUT_DIR / "arcom_descarga_reporte.json"
 OUT_MISSING = OUT_DIR / "arcom_ids_faltantes.txt"
 
-LAYER_NAME    = "catastro_minero"
-BATCH_SIZE    = 500
-MAX_RETRIES   = 5
-SLEEP_SECONDS = 0.4
+LAYER_NAME = os.getenv("ARCOM_LAYER_NAME", "catastro_minero").strip() or "catastro_minero"
+BATCH_SIZE = max(1, int(os.getenv("ARCOM_BATCH_SIZE", "500")))
+MAX_RETRIES = max(1, int(os.getenv("ARCOM_MAX_RETRIES", "5")))
+SLEEP_SECONDS = max(float(os.getenv("ARCOM_SLEEP_SECONDS", "0.4")), 0.0)
+REQUEST_TIMEOUT_SEC = max(float(os.getenv("ARCOM_REQUEST_TIMEOUT_SEC", "180")), 1.0)
 
 
 def request_json(session, method, url, params):
@@ -44,9 +47,9 @@ def request_json(session, method, url, params):
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             if method == "GET":
-                resp = session.get(url, params=params, timeout=180)
+                resp = session.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
             else:
-                resp = session.post(url, data=params, timeout=180)
+                resp = session.post(url, data=params, timeout=REQUEST_TIMEOUT_SEC)
             resp.raise_for_status()
             data = resp.json()
             if "error" in data:
@@ -137,6 +140,7 @@ def esri_feature_to_geojson(feature, out_sr=4326):
 
 
 def main():
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     session = requests.Session()
 
     print("Leyendo metadatos del servicio ARCOM...")

@@ -1,0 +1,16 @@
+[Unit]
+Description=Robiotec Dashboard Web Service
+After=network.target apicentral.service objetivos.service opensky.service
+Wants=apicentral.service objetivos.service opensky.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/robiotec/SVI/servicios/dashboard.sh
+Restart=always
+RestartSec=5
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

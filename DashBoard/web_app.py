@@ -82,12 +82,20 @@ ARCOM_GPKG_PATH = Path(os.getenv("ARCOM_GPKG_PATH", "/home/robiotec/ARCOM/arcom_
 ARCOM_MAX_FEATURES_PER_REQUEST = max(1, int(os.getenv("ARCOM_MAX_FEATURES_PER_REQUEST", "120")))
 ARCOM_ENABLED = os.getenv("ARCOM_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 ARCOM_MIN_ZOOM = max(1, min(24, int(os.getenv("ARCOM_MIN_ZOOM", "11"))))
+TELEMETRY_MAP_MIN_ZOOM = max(1, min(24, int(os.getenv("TELEMETRY_MAP_MIN_ZOOM", "6"))))
+TELEMETRY_MAP_MAX_ZOOM = max(TELEMETRY_MAP_MIN_ZOOM, min(24, int(os.getenv("TELEMETRY_MAP_MAX_ZOOM", "18"))))
 THUNDERFOREST_API_KEY = os.getenv("THUNDERFOREST_API_KEY", "").strip()
 ARCOM_CONCESSION_STORE = ArcomConcessionStore(ARCOM_GPKG_PATH)
 OBJETIVOS_DIR = Path(os.getenv("OBJETIVOS_DIR", "/home/robiotec/SVI/objetivos")).expanduser()
 OBJETIVOS_LATEST_DIR = OBJETIVOS_DIR / "latest"
 OBJETIVO_API_BASE_URL = os.getenv("OBJETIVO_API_BASE_URL", "http://127.0.0.1:8004").strip().rstrip("/")
+DRONE_TRACKS_DIR = Path(os.getenv("DRONE_TRACKS_DIR", "/home/robiotec/SVI/trayectorias")).expanduser()
+DRONE_TRACKS_LATEST_DIR = DRONE_TRACKS_DIR / "latest"
 OPENSKY_DATA_FILE = Path(os.getenv("OPENSKY_DATA_FILE", "/home/robiotec/SVI/opensky/opensky_data.json")).expanduser()
+AIRPLANES_API_URL = os.getenv("AIRPLANES_API_URL", "https://api.airplanes.live/v2/point/{lat}/{lon}/{radius}").strip()
+AIRPLANES_REQUEST_TIMEOUT_SEC = max(float(os.getenv("AIRPLANES_REQUEST_TIMEOUT_SEC", "8")), 1.0)
+AIRPLANES_VIEWPORT_RADIUS_NM = max(25, min(250, int(os.getenv("AIRPLANES_VIEWPORT_RADIUS_NM", "180"))))
+AIRPLANES_VIEWPORT_MAX_POINTS = max(1, min(12, int(os.getenv("AIRPLANES_VIEWPORT_MAX_POINTS", "9"))))
 CROPS_MANIFEST_CACHE_TTL_SEC = max(float(os.getenv("CROPS_MANIFEST_CACHE_TTL_SEC", "30")), 0.0)
 PUBLIC_PATHS = frozenset({"/login", "/api/login", "/api/logout"})
 PUBLIC_PATH_PREFIXES = ("/static", "/icons", "/assets")
@@ -1935,6 +1943,8 @@ async def handle_mapa(request: web.Request) -> web.Response:
         request=request,
         replacements={
             "__ARCOM_MIN_ZOOM__": str(ARCOM_MIN_ZOOM),
+            "__TELEMETRY_MAP_MIN_ZOOM__": str(TELEMETRY_MAP_MIN_ZOOM),
+            "__TELEMETRY_MAP_MAX_ZOOM__": str(TELEMETRY_MAP_MAX_ZOOM),
             "__THUNDERFOREST_API_KEY_JSON__": json.dumps(THUNDERFOREST_API_KEY),
         },
     )
@@ -3504,6 +3514,154 @@ async def handle_opensky_states(request: web.Request) -> web.Response:
         return _json_response({"error": "opensky_unavailable", "detail": str(exc)}, status=502)
 
 
+def _parse_bbox_query(request: web.Request) -> tuple[float, float, float, float]:
+    raw_bbox = str(request.query.get("bbox", "")).strip()
+    if not raw_bbox:
+        raise ValueError("missing_bbox")
+
+    parts = [part.strip() for part in raw_bbox.split(",")]
+    if len(parts) != 4:
+        raise ValueError("invalid_bbox")
+
+    try:
+        min_lon, min_lat, max_lon, max_lat = [float(part) for part in parts]
+    except ValueError as exc:
+        raise ValueError("invalid_bbox") from exc
+
+    if min_lon > max_lon or min_lat > max_lat:
+        raise ValueError("invalid_bbox")
+    if min_lat < -90 or max_lat > 90 or min_lon < -180 or max_lon > 180:
+        raise ValueError("invalid_bbox")
+    return min_lon, min_lat, max_lon, max_lat
+
+
+def _aircraft_point_grid(min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> list[tuple[float, float, int]]:
+    radius_nm = AIRPLANES_VIEWPORT_RADIUS_NM
+    center_lat = (min_lat + max_lat) / 2
+    center_lon = (min_lon + max_lon) / 2
+    lat_span = max(max_lat - min_lat, 0.01)
+    lon_span = max(max_lon - min_lon, 0.01)
+    lat_nm = lat_span * 60
+    lon_nm = lon_span * 60 * max(math.cos(math.radians(center_lat)), 0.2)
+
+    if math.hypot(lat_nm, lon_nm) / 2 <= radius_nm * 0.88:
+        return [(center_lat, center_lon, radius_nm)]
+
+    step_nm = radius_nm * 1.42
+    rows = max(1, math.ceil(lat_nm / step_nm))
+    cols = max(1, math.ceil(lon_nm / step_nm))
+
+    while rows * cols > AIRPLANES_VIEWPORT_MAX_POINTS and (rows > 1 or cols > 1):
+        if cols >= rows and cols > 1:
+            cols -= 1
+        elif rows > 1:
+            rows -= 1
+        else:
+            break
+
+    lat_step = lat_span / rows
+    lon_step = lon_span / cols
+    points = []
+    for row in range(rows):
+        lat = min_lat + lat_step * (row + 0.5)
+        for col in range(cols):
+            lon = min_lon + lon_step * (col + 0.5)
+            points.append((lat, lon, radius_nm))
+    return points
+
+
+def _parse_airplanes_alt_m(alt_baro) -> float | None:
+    if alt_baro is None or alt_baro == "ground":
+        return 0.0
+    try:
+        return float(alt_baro) * 0.3048
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_airplanes_aircraft(ac: dict) -> dict | None:
+    lat = ac.get("lat")
+    lon = ac.get("lon")
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except (TypeError, ValueError):
+        return None
+
+    icao = str(ac.get("hex") or "").strip().lower()
+    if not icao:
+        return None
+
+    alt_baro = ac.get("alt_baro")
+    gs = ac.get("gs")
+    try:
+        vel_ms = float(gs) * 0.514444 if gs is not None else None
+    except (TypeError, ValueError):
+        vel_ms = None
+
+    return {
+        "icao24": icao,
+        "callsign": str(ac.get("flight") or icao).strip(),
+        "lon": lon,
+        "lat": lat,
+        "alt_m": _parse_airplanes_alt_m(alt_baro),
+        "on_ground": alt_baro == "ground",
+        "vel_ms": vel_ms,
+        "heading": ac.get("track"),
+    }
+
+
+def _fetch_airplanes_point(lat: float, lon: float, radius: int) -> list[dict]:
+    url = AIRPLANES_API_URL.format(lat=f"{lat:.6f}", lon=f"{lon:.6f}", radius=int(radius))
+    request = Request(url, headers={"User-Agent": "ROBIOTEC-Dashboard/1.0"})
+    with urlopen(request, timeout=AIRPLANES_REQUEST_TIMEOUT_SEC) as response:
+        payload = json.loads(response.read().decode("utf-8") or "{}")
+    aircraft = payload.get("ac") if isinstance(payload, dict) else None
+    return aircraft if isinstance(aircraft, list) else []
+
+
+async def handle_aircraft_viewport(request: web.Request) -> web.Response:
+    try:
+        min_lon, min_lat, max_lon, max_lat = _parse_bbox_query(request)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+
+    query_points = _aircraft_point_grid(min_lon, min_lat, max_lon, max_lat)
+    seen: dict[str, dict] = {}
+    errors = 0
+
+    for lat, lon, radius in query_points:
+        try:
+            raw_aircraft = await asyncio.to_thread(_fetch_airplanes_point, lat, lon, radius)
+        except Exception as exc:
+            errors += 1
+            LOGGER.warning("airplanes.live no disponible para %.4f, %.4f: %s", lat, lon, exc)
+            continue
+
+        for ac in raw_aircraft:
+            if not isinstance(ac, dict):
+                continue
+            aircraft = _normalize_airplanes_aircraft(ac)
+            if not aircraft:
+                continue
+            if not (min_lat <= aircraft["lat"] <= max_lat and min_lon <= aircraft["lon"] <= max_lon):
+                continue
+            seen.setdefault(aircraft["icao24"], aircraft)
+
+    return _json_response(
+        {
+            "ts": int(time.time()),
+            "aircraft": list(seen.values()),
+            "query_points": [
+                {"lat": lat, "lon": lon, "radius_nm": radius}
+                for lat, lon, radius in query_points
+            ],
+            "errors": errors,
+        },
+        status=502 if errors and not seen else 200,
+    )
+
+
 async def handle_arcom_concession_lookup(request: web.Request) -> web.Response:
     if not ARCOM_ENABLED:
         return _json_response(
@@ -3599,6 +3757,164 @@ def _objetivo_latest_file_path(objetivo_id: str) -> Path:
     return OBJETIVOS_LATEST_DIR / f"{normalized_id}.json"
 
 
+def _normalized_track_id(device_id: str) -> str:
+    normalized_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(device_id or "").strip())
+    if not normalized_id:
+        raise ValueError("invalid_device_id")
+    return normalized_id
+
+
+def _drone_track_latest_file_path(device_id: str) -> Path:
+    return DRONE_TRACKS_LATEST_DIR / f"{_normalized_track_id(device_id)}.json"
+
+
+def _load_drone_track(device_id: str) -> dict:
+    try:
+        payload = json.loads(_drone_track_latest_file_path(device_id).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _point_identity(point: dict) -> str:
+    return "|".join(
+        [
+            str(point.get("lat") or "").strip(),
+            str(point.get("lon") or "").strip(),
+            str(point.get("ts") or "").strip(),
+        ]
+    )
+
+
+def _normalize_track_point(raw_point: dict) -> dict | None:
+    if not isinstance(raw_point, dict):
+        return None
+    try:
+        lat = float(raw_point.get("lat"))
+        lon = float(raw_point.get("lon"))
+    except (TypeError, ValueError):
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return None
+
+    def optional_float(name: str) -> float | None:
+        value = raw_point.get(name)
+        try:
+            return float(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    return {
+        "lat": lat,
+        "lon": lon,
+        "altitude": optional_float("altitude"),
+        "speed": optional_float("speed"),
+        "heading": optional_float("heading"),
+        "ts": int(raw_point.get("ts") or int(time.time() * 1000)),
+    }
+
+
+def _serialize_drone_track_payload(device_id: str, payload: dict) -> dict:
+    flights = payload.get("flights") if isinstance(payload.get("flights"), list) else []
+    return {
+        "ok": True,
+        "device_id": str(payload.get("device_id") or device_id),
+        "label": str(payload.get("label") or device_id),
+        "kind": "drone",
+        "updated_at": payload.get("updated_at"),
+        "flights": flights,
+    }
+
+
+async def handle_drone_tracks(request: web.Request) -> web.Response:
+    tracks = []
+    if DRONE_TRACKS_LATEST_DIR.exists():
+        for path in sorted(DRONE_TRACKS_LATEST_DIR.glob("*.json")):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if isinstance(payload, dict):
+                tracks.append(_serialize_drone_track_payload(path.stem, payload))
+    return _json_response({"ok": True, "tracks": tracks})
+
+
+async def handle_drone_track_point(request: web.Request) -> web.Response:
+    device_id = str(request.match_info.get("device_id") or "").strip()
+    try:
+        track_path = _drone_track_latest_file_path(device_id)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, status=400)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _json_response({"error": "invalid_json"}, status=400)
+    if not isinstance(body, dict):
+        return _json_response({"error": "invalid_payload"}, status=400)
+
+    label = str(body.get("label") or device_id).strip() or device_id
+    state = str(body.get("state") or "armed").strip().lower()
+    timestamp_ms = int(body.get("ts") or int(time.time() * 1000))
+    point = _normalize_track_point(body.get("point") if isinstance(body.get("point"), dict) else {})
+
+    payload = _load_drone_track(device_id)
+    flights = payload.get("flights") if isinstance(payload.get("flights"), list) else []
+    active_flight = next((flight for flight in reversed(flights) if isinstance(flight, dict) and flight.get("state") == "armed"), None)
+
+    if state == "armed":
+        if point is None:
+            return _json_response({"error": "invalid_point"}, status=400)
+        if active_flight is None:
+            active_flight = {
+                "device_id": device_id,
+                "label": label,
+                "kind": "drone",
+                "state": "armed",
+                "started_at": int(body.get("started_at") or point.get("ts") or timestamp_ms),
+                "ended_at": None,
+                "points": [],
+            }
+            flights.append(active_flight)
+        active_flight["label"] = label
+        points = active_flight.get("points") if isinstance(active_flight.get("points"), list) else []
+        if _point_identity(point) not in {_point_identity(existing) for existing in points if isinstance(existing, dict)}:
+            points.append(point)
+        active_flight["points"] = points
+    elif state == "disarmed":
+        if active_flight is not None:
+            active_flight["state"] = "disarmed"
+            active_flight["ended_at"] = timestamp_ms
+    else:
+        return _json_response({"error": "invalid_state"}, status=400)
+
+    next_payload = {
+        "ok": True,
+        "device_id": device_id,
+        "label": label,
+        "kind": "drone",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "flights": flights,
+    }
+    DRONE_TRACKS_LATEST_DIR.mkdir(parents=True, exist_ok=True)
+    track_path.write_text(json.dumps(next_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return _json_response(_serialize_drone_track_payload(device_id, next_payload))
+
+
+async def handle_drone_tracks_clear(request: web.Request) -> web.Response:
+    cleared = 0
+    if DRONE_TRACKS_LATEST_DIR.exists():
+        for path in DRONE_TRACKS_LATEST_DIR.glob("*.json"):
+            try:
+                path.unlink()
+                cleared += 1
+            except FileNotFoundError:
+                continue
+    return _json_response({"ok": True, "cleared": True, "files_cleared": cleared})
+
+
 def _clear_objetivo_latest_cache(objetivo_id: str) -> bool:
     snapshot_path = _objetivo_latest_file_path(objetivo_id)
     try:
@@ -3617,6 +3933,51 @@ def _clear_remote_objetivo(objetivo_id: str) -> dict:
     with urlopen(request, timeout=5.0) as response:
         payload = json.loads(response.read().decode("utf-8") or "{}")
     return payload if isinstance(payload, dict) else {"ok": True, "cleared": True, "id": objetivo_id}
+
+
+def _objective_point_key(data: dict) -> str:
+    return "|".join(
+        [
+            str(data.get("id") or "").strip(),
+            str(data.get("latitud") or "").strip(),
+            str(data.get("longitud") or "").strip(),
+            str(data.get("updated_at") or "").strip(),
+        ]
+    )
+
+
+def _extract_objetivo_points(payload: dict, latest_data: dict) -> list[dict]:
+    raw_points = payload.get("points") if isinstance(payload.get("points"), list) else []
+    points: list[dict] = []
+
+    for point in raw_points:
+        if not isinstance(point, dict):
+            continue
+        data = point.get("data") if isinstance(point.get("data"), dict) else point
+        if isinstance(data, dict):
+            points.append(data)
+
+    if latest_data:
+        latest_key = _objective_point_key(latest_data)
+        point_keys = {_objective_point_key(point) for point in points}
+        if latest_key and latest_key not in point_keys:
+            points.append(latest_data)
+
+    return points
+
+
+def _get_objetivo_concession(data: dict) -> dict | None:
+    if not ARCOM_ENABLED:
+        return None
+    try:
+        lat = float(data.get("latitud"))
+        lon = float(data.get("longitud"))
+        return ARCOM_CONCESSION_STORE.get_concession_for_point(lat=lat, lon=lon)
+    except (TypeError, ValueError):
+        return None
+    except ArcomLookupError as exc:
+        LOGGER.warning("Consulta ARCOM no disponible para objetivo %s: %s", data.get("id") or "--", exc)
+        return None
 
 
 async def handle_objetivo_latest(request: web.Request) -> web.Response:
@@ -3638,27 +3999,23 @@ async def handle_objetivo_latest(request: web.Request) -> web.Response:
     if not isinstance(data, dict):
         return _json_response({"ok": True, "found": False, "data": None, "concession": None})
 
-    concession = None
-    if ARCOM_ENABLED:
-        try:
-            lat = float(data.get("latitud"))
-            lon = float(data.get("longitud"))
-            concession = await asyncio.to_thread(
-                ARCOM_CONCESSION_STORE.get_concession_for_point,
-                lat=lat,
-                lon=lon,
-            )
-        except (TypeError, ValueError):
-            concession = None
-        except ArcomLookupError as exc:
-            LOGGER.warning("Consulta ARCOM no disponible para objetivo %s: %s", objetivo_id, exc)
+    points = _extract_objetivo_points(payload, data) if isinstance(payload, dict) else [data]
+    enriched_points = []
+    latest_key = _objective_point_key(data)
+    latest_concession = None
+    for point in points:
+        concession = await asyncio.to_thread(_get_objetivo_concession, point)
+        if _objective_point_key(point) == latest_key:
+            latest_concession = concession
+        enriched_points.append({"data": point, "concession": concession})
 
     return _json_response(
         {
             "ok": True,
             "found": True,
             "data": data,
-            "concession": concession,
+            "concession": latest_concession,
+            "points": enriched_points,
         }
     )
 
@@ -3840,8 +4197,12 @@ def create_app() -> web.Application:
             web.put("/api/organizations/{organization_id}", handle_organization_update),
             web.delete("/api/organizations/{organization_id}", handle_organization_delete),
             web.get("/api/opensky/states", handle_opensky_states),
+            web.get("/api/aircraft/viewport", handle_aircraft_viewport),
             web.get("/api/arcom/concession-lookup", handle_arcom_concession_lookup),
             web.get("/api/arcom/concessions", handle_arcom_concessions_bbox),
+            web.get("/api/tracks/drone", handle_drone_tracks),
+            web.post("/api/tracks/drone/{device_id}/point", handle_drone_track_point),
+            web.post("/api/tracks/drone/clear", handle_drone_tracks_clear),
             web.get("/api/objetivos/{objetivo_id}", handle_objetivo_latest),
             web.post("/api/objetivos/{objetivo_id}/clear", handle_objetivo_clear),
             web.get("/api/telemetry", handle_telemetry),

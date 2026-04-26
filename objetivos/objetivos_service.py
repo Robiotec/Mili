@@ -16,7 +16,6 @@ OBJETIVOS_DIR = Path(os.getenv("OBJETIVOS_DIR", str(Path(__file__).resolve().par
 LATEST_DIR = OBJETIVOS_DIR / "latest"
 HISTORY_DIR = OBJETIVOS_DIR / "history"
 LOG_FILE = OBJETIVOS_DIR / "objetivos.log"
-RAW_STDOUT_LOG_FILE = OBJETIVOS_DIR / "objetivos_stdout.log"
 POLL_INTERVAL_SEC = max(float(os.getenv("OBJETIVO_POLL_INTERVAL_SEC", "1.0")), 0.25)
 HTTP_TIMEOUT_SEC = max(float(os.getenv("OBJETIVO_HTTP_TIMEOUT_SEC", "5.0")), 1.0)
 
@@ -31,10 +30,6 @@ def configure_logging() -> logging.Logger:
     logger.handlers.clear()
 
     formatter = logging.Formatter("[%(asctime)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-
-    file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
 
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
@@ -106,10 +101,77 @@ def load_previous_snapshot(objetivo_id: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def snapshot_point_key(snapshot: dict[str, Any]) -> str:
+    data = snapshot.get("data") if isinstance(snapshot, dict) else None
+    if not isinstance(data, dict):
+        return ""
+    return "|".join(
+        [
+            str(data.get("id") or "").strip(),
+            str(data.get("latitud") or "").strip(),
+            str(data.get("longitud") or "").strip(),
+            str(data.get("updated_at") or "").strip(),
+        ]
+    )
+
+
+def snapshot_points(snapshot: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(snapshot, dict):
+        return []
+
+    points = snapshot.get("points")
+    if isinstance(points, list):
+        normalized_points = []
+        for point in points:
+            if not isinstance(point, dict):
+                continue
+            data = point.get("data") if isinstance(point.get("data"), dict) else point
+            if isinstance(data, dict):
+                normalized_points.append(dict(data))
+        if normalized_points:
+            return normalized_points
+
+    data = snapshot.get("data")
+    return [dict(data)] if isinstance(data, dict) else []
+
+
+def history_points(objetivo_id: str) -> list[dict[str, Any]]:
+    path = history_snapshot_path(objetivo_id)
+    points: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return points
+    except Exception:
+        return points
+
+    seen_keys = set()
+    for line in lines:
+        try:
+            payload = json.loads(line)
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            continue
+        if str(data.get("id") or "").strip() != objetivo_id:
+            continue
+        point_key = snapshot_point_key({"data": data})
+        if not point_key or point_key in seen_keys:
+            continue
+        points.append(dict(data))
+        seen_keys.add(point_key)
+    return points
+
+
 def snapshot_changed(previous: dict[str, Any] | None, current: dict[str, Any]) -> bool:
     previous_data = previous.get("data") if isinstance(previous, dict) else None
     current_data = current.get("data") if isinstance(current, dict) else None
     if not isinstance(previous_data, dict) or not isinstance(current_data, dict):
+        return True
+    if not isinstance(previous.get("points"), list):
         return True
     return (
         previous_data.get("updated_at") != current_data.get("updated_at")
@@ -121,8 +183,26 @@ def snapshot_changed(previous: dict[str, Any] | None, current: dict[str, Any]) -
 def persist_snapshot(snapshot: dict[str, Any]) -> None:
     data = snapshot["data"]
     objetivo_id = str(data["id"]).strip() or OBJETIVO_ID
-    latest_snapshot_path(objetivo_id).write_text(
-        json.dumps(snapshot, ensure_ascii=False, indent=2),
+    path = latest_snapshot_path(objetivo_id)
+    previous = load_previous_snapshot(objetivo_id)
+    active_points = snapshot_points(previous)
+    if previous and not isinstance(previous.get("points"), list):
+        migrated_points = history_points(objetivo_id)
+        if migrated_points:
+            active_points = migrated_points
+    current_key = snapshot_point_key(snapshot)
+    existing_keys = {
+        snapshot_point_key({"data": point})
+        for point in active_points
+    }
+    if current_key and current_key not in existing_keys:
+        active_points.append(dict(data))
+
+    snapshot_with_points = dict(snapshot)
+    snapshot_with_points["points"] = active_points
+
+    path.write_text(
+        json.dumps(snapshot_with_points, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     with history_snapshot_path(objetivo_id).open("a", encoding="utf-8") as handle:
@@ -163,8 +243,7 @@ def main() -> int:
         except HTTPError as exc:
             if exc.code == 404:
                 previous = None
-                if clear_latest_snapshot(OBJETIVO_ID):
-                    logger.info("Objetivo %s no encontrado en API; cache latest local limpiada", OBJETIVO_ID)
+                logger.info("Objetivo %s no encontrado en API; latest local se conserva hasta Clear", OBJETIVO_ID)
             logger.warning("HTTP %s consultando objetivo %s", exc.code, OBJETIVO_ID)
         except URLError as exc:
             logger.warning("No se pudo consultar objetivo %s: %s", OBJETIVO_ID, exc)

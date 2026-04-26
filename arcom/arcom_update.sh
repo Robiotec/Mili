@@ -1,5 +1,5 @@
-#!/bin/bash
-LOG_FILE="/home/robiotec/SVI/arcom/arcom_update.log"
-echo "=== $(date '+%Y-%m-%d %H:%M:%S') - Iniciando actualización ARCOM ===" >> "$LOG_FILE"
-/usr/bin/python3 /home/robiotec/SVI/arcom/download_arcom.py >> "$LOG_FILE" 2>&1
-echo "=== $(date '+%Y-%m-%d %H:%M:%S') - Finalizado ===" >> "$LOG_FILE"
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "$ROOT_DIR/servicios/arcom_update.sh"
