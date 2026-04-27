@@ -1,21 +1,18 @@
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from datetime import datetime
 from typing import Any
 
 from gps_api_client import GPSApiClient
+from surveillance import settings
 from surveillance.telemetry.service import TelemetryService
 from surveillance.vehicle_registry import VehicleRegistryEntry
 
 
-API_POLL_INTERVAL_SEC = max(float(os.getenv("TELEMETRY_REFRESH_SECONDS", "1")), 0.25)
-DEFAULT_GPS_API_BASE_URL = (
-    os.getenv("GPS_API_BASE_URL", "").strip()
-    or os.getenv("STREAM_API_BASE_URL", "").strip()
-)
+API_POLL_INTERVAL_SEC = settings.TELEMETRY_REFRESH_SECONDS
+DEFAULT_GPS_API_BASE_URL = settings.GPS_API_BASE_URL
 LOGGER = logging.getLogger(__name__)
 
 

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Relay: mediamtx (8554) -> mediamtx-api (8654)
+# Relay: mediamtx remoto (8654) -> mediamtx-api local (8654)
 # Path monitoreado: /DRONE
 
 MEDIAMTX_API="http://127.0.0.1:9997"
 SRC_PATH="DRONE"
-SRC_RTSP="rtsp://100.125.116.89:8554/${SRC_PATH}"
+SRC_RTSP="rtsp://100.125.116.89:8654/${SRC_PATH}"
 DST_RTSP="rtsp://localhost:8654/${SRC_PATH}"
 
 while true; do

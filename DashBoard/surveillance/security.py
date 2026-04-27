@@ -5,10 +5,11 @@ import hashlib
 import hmac
 import os
 
+from surveillance import settings
 
 PASSWORD_SCHEME = "pbkdf2_sha256"
-PASSWORD_ITERATIONS = int(os.getenv("PASSWORD_HASH_ITERATIONS", "390000"))
-PASSWORD_SALT_BYTES = int(os.getenv("PASSWORD_SALT_BYTES", "16"))
+PASSWORD_ITERATIONS = settings.PASSWORD_HASH_ITERATIONS
+PASSWORD_SALT_BYTES = settings.PASSWORD_SALT_BYTES
 
 
 def hash_password(password: str) -> str:

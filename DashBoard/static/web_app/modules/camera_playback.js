@@ -152,7 +152,7 @@ export function createCameraPlaybackModule(deps) {
       return (
         (target.protocol === "http:" || target.protocol === "https:")
         && !hasPathExtension
-        && ["8989", "8889"].includes(target.port)
+        && target.port === "8989"
       );
     } catch (error) {
       return false;

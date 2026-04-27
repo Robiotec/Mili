@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import os
 import re
 import threading
 from pathlib import Path
@@ -11,6 +10,7 @@ from urllib.parse import urlparse, urlunparse
 from db.connection import DatabaseError, db
 from repositories.querys_camera import CameraRepository
 from repositories.querys_vehicle import VehicleRepository
+from surveillance import settings
 from surveillance.config import (
     CONFIG_PATH,
     is_valid_camera_name,
@@ -26,7 +26,7 @@ from surveillance.telemetry.service import TelemetryService
 from surveillance.web_runtime import build_stream_runtime
 
 
-MEDIAMTX_WEBRTC_PORT = os.getenv("MEDIAMTX_WEBRTC_PORT", "8989")
+MEDIAMTX_WEBRTC_PORT = settings.MEDIAMTX_WEBRTC_PORT
 
 
 class ApplicationContext:

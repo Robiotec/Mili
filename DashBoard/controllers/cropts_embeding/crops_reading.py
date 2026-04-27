@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import select
 import shlex
 import socket
@@ -12,6 +11,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Optional
+
+from surveillance import settings
 
 
 class SSHError(Exception):
@@ -26,15 +27,8 @@ class SSHCommandError(SSHError):
     """Error al ejecutar comando remoto por SSH."""
 
 
-def _env_int(name: str, default: int) -> int:
-    try:
-        return int(os.getenv(name, str(default)))
-    except (TypeError, ValueError):
-        return default
-
-
 def get_default_crops_remote_manifest_path() -> str:
-    return os.getenv("CROPS_REMOTE_MANIFEST_PATH", "").strip()
+    return settings.CROPS_REMOTE_MANIFEST_PATH
 
 
 def build_default_crops_ssh_config(
@@ -46,38 +40,35 @@ def build_default_crops_ssh_config(
     log_level: int = logging.INFO,
 ) -> "SSHConfig":
     """Construye la configuración SSH base para leer los crops remotos desde .env (CROPS_SSH_*)."""
-    key_path = os.getenv("CROPS_SSH_KEY_PATH", "").strip()
+    key_path = settings.CROPS_SSH_KEY_PATH
     if key_path:
         key_path = str(Path(key_path).expanduser())
     return SSHConfig(
-        host=os.getenv("CROPS_SSH_HOST", "").strip(),
-        user=os.getenv("CROPS_SSH_USER", "").strip(),
-        port=_env_int("CROPS_SSH_PORT", 22),
+        host=settings.CROPS_SSH_HOST,
+        user=settings.CROPS_SSH_USER,
+        port=settings.CROPS_SSH_PORT,
         key_path=key_path or None,
         connect_timeout=(
             connect_timeout
             if connect_timeout is not None
-            else _env_int("CROPS_SSH_CONNECT_TIMEOUT", 10)
+            else settings.CROPS_CONNECT_TIMEOUT
         ),
         command_timeout=(
             command_timeout
             if command_timeout is not None
-            else _env_int("CROPS_SSH_COMMAND_TIMEOUT", 30)
+            else settings.CROPS_COMMAND_TIMEOUT
         ),
         max_retries=(
             max(1, max_retries)
             if max_retries is not None
-            else max(1, _env_int("CROPS_SSH_MAX_RETRIES", 3))
+            else settings.CROPS_MAX_RETRIES
         ),
         retry_delay=(
             max(0, retry_delay)
             if retry_delay is not None
-            else max(0, _env_int("CROPS_SSH_RETRY_DELAY", 4))
+            else settings.CROPS_RETRY_DELAY
         ),
-        strict_host_key_checking=(
-            os.getenv("CROPS_SSH_STRICT_HOST_KEY_CHECKING", "accept-new").strip()
-            or "accept-new"
-        ),
+        strict_host_key_checking=settings.CROPS_SSH_STRICT_HOST_KEY_CHECKING,
         log_level=log_level,
     )
 

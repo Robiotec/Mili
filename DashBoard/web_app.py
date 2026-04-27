@@ -9,7 +9,6 @@ import hmac
 import json
 import logging
 import math
-import os
 import re
 import shlex
 import socket
@@ -56,6 +55,7 @@ from repositories.querys_camera import CameraRepository
 from repositories.querys_organitation import OrganizationRepository
 from repositories.querys_user import UserRepository
 from repositories.querys_vehicle import VehicleRepository
+from surveillance import settings
 from surveillance.app_context import ApplicationContext
 from surveillance.arcom import ArcomConcessionStore, ArcomLookupError
 from surveillance.config import is_valid_camera_name, read_yaml, validate_camera_viewer_source
@@ -72,31 +72,31 @@ APP_CONTEXT = ApplicationContext()
 LOGGER = logging.getLogger(__name__)
 CROPS_SSH_QUIET_LOGGER = logging.getLogger(f"{__name__}.crops_ssh_quiet")
 CROPS_SSH_QUIET_LOGGER.setLevel(logging.CRITICAL)
-SESSION_COOKIE_NAME = os.getenv("WEB_SESSION_COOKIE_NAME", "robiotec_session")
-SESSION_MAX_AGE_SEC = int(os.getenv("WEB_SESSION_MAX_AGE_SECONDS", "28800"))
-SESSION_SECRET = os.getenv("WEB_SESSION_SECRET", "robiotec-dev-session-secret")
-MEDIAMTX_WEBRTC_PORT = os.getenv("MEDIAMTX_WEBRTC_PORT", "8989")
-API_TELEMETRY_DEFAULT_DRONE_ID = os.getenv("API_TELEMETRY_DEFAULT_DRONE_ID", "drone").strip() or "drone"
-TELEMETRY_REFRESH_SECONDS = max(float(os.getenv("TELEMETRY_REFRESH_SECONDS", "1")), 0.25)
-ARCOM_GPKG_PATH = Path(os.getenv("ARCOM_GPKG_PATH", "/home/robiotec/ARCOM/arcom_catastro.gpkg")).expanduser()
-ARCOM_MAX_FEATURES_PER_REQUEST = max(1, int(os.getenv("ARCOM_MAX_FEATURES_PER_REQUEST", "120")))
-ARCOM_ENABLED = os.getenv("ARCOM_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-ARCOM_MIN_ZOOM = max(1, min(24, int(os.getenv("ARCOM_MIN_ZOOM", "11"))))
-TELEMETRY_MAP_MIN_ZOOM = max(1, min(24, int(os.getenv("TELEMETRY_MAP_MIN_ZOOM", "6"))))
-TELEMETRY_MAP_MAX_ZOOM = max(TELEMETRY_MAP_MIN_ZOOM, min(24, int(os.getenv("TELEMETRY_MAP_MAX_ZOOM", "18"))))
-THUNDERFOREST_API_KEY = os.getenv("THUNDERFOREST_API_KEY", "").strip()
+SESSION_COOKIE_NAME = settings.WEB_SESSION_COOKIE_NAME
+SESSION_MAX_AGE_SEC = settings.WEB_SESSION_MAX_AGE_SECONDS
+SESSION_SECRET = settings.WEB_SESSION_SECRET
+MEDIAMTX_WEBRTC_PORT = settings.MEDIAMTX_WEBRTC_PORT
+API_TELEMETRY_DEFAULT_DRONE_ID = settings.API_TELEMETRY_DEFAULT_DRONE_ID
+TELEMETRY_REFRESH_SECONDS = settings.TELEMETRY_REFRESH_SECONDS
+ARCOM_GPKG_PATH = settings.ARCOM_GPKG_PATH
+ARCOM_MAX_FEATURES_PER_REQUEST = settings.ARCOM_MAX_FEATURES_PER_REQUEST
+ARCOM_ENABLED = settings.ARCOM_ENABLED
+ARCOM_MIN_ZOOM = settings.ARCOM_MIN_ZOOM
+TELEMETRY_MAP_MIN_ZOOM = settings.TELEMETRY_MAP_MIN_ZOOM
+TELEMETRY_MAP_MAX_ZOOM = settings.TELEMETRY_MAP_MAX_ZOOM
+THUNDERFOREST_API_KEY = settings.THUNDERFOREST_API_KEY
 ARCOM_CONCESSION_STORE = ArcomConcessionStore(ARCOM_GPKG_PATH)
-OBJETIVOS_DIR = Path(os.getenv("OBJETIVOS_DIR", "/home/robiotec/SVI/objetivos")).expanduser()
+OBJETIVOS_DIR = settings.OBJETIVOS_DIR
 OBJETIVOS_LATEST_DIR = OBJETIVOS_DIR / "latest"
-OBJETIVO_API_BASE_URL = os.getenv("OBJETIVO_API_BASE_URL", "http://127.0.0.1:8004").strip().rstrip("/")
-DRONE_TRACKS_DIR = Path(os.getenv("DRONE_TRACKS_DIR", "/home/robiotec/SVI/trayectorias")).expanduser()
+OBJETIVO_API_BASE_URL = settings.OBJETIVO_API_BASE_URL
+DRONE_TRACKS_DIR = settings.DRONE_TRACKS_DIR
 DRONE_TRACKS_LATEST_DIR = DRONE_TRACKS_DIR / "latest"
-OPENSKY_DATA_FILE = Path(os.getenv("OPENSKY_DATA_FILE", "/home/robiotec/SVI/opensky/opensky_data.json")).expanduser()
-AIRPLANES_API_URL = os.getenv("AIRPLANES_API_URL", "https://api.airplanes.live/v2/point/{lat}/{lon}/{radius}").strip()
-AIRPLANES_REQUEST_TIMEOUT_SEC = max(float(os.getenv("AIRPLANES_REQUEST_TIMEOUT_SEC", "8")), 1.0)
-AIRPLANES_VIEWPORT_RADIUS_NM = max(25, min(250, int(os.getenv("AIRPLANES_VIEWPORT_RADIUS_NM", "180"))))
-AIRPLANES_VIEWPORT_MAX_POINTS = max(1, min(12, int(os.getenv("AIRPLANES_VIEWPORT_MAX_POINTS", "9"))))
-CROPS_MANIFEST_CACHE_TTL_SEC = max(float(os.getenv("CROPS_MANIFEST_CACHE_TTL_SEC", "30")), 0.0)
+OPENSKY_DATA_FILE = settings.OPENSKY_DATA_FILE
+AIRPLANES_API_URL = settings.AIRPLANES_API_URL
+AIRPLANES_REQUEST_TIMEOUT_SEC = settings.AIRPLANES_REQUEST_TIMEOUT_SEC
+AIRPLANES_VIEWPORT_RADIUS_NM = settings.AIRPLANES_VIEWPORT_RADIUS_NM
+AIRPLANES_VIEWPORT_MAX_POINTS = settings.AIRPLANES_VIEWPORT_MAX_POINTS
+CROPS_MANIFEST_CACHE_TTL_SEC = settings.CROPS_MANIFEST_CACHE_TTL_SEC
 PUBLIC_PATHS = frozenset({"/login", "/api/login", "/api/logout"})
 PUBLIC_PATH_PREFIXES = ("/static", "/icons", "/assets")
 TEMPLATE_INCLUDE_PATTERN = re.compile(r"__INCLUDE:([A-Za-z0-9_./-]+)__")
@@ -1174,7 +1174,7 @@ def _rewrite_viewer_url_for_request_host(viewer_url: str, request: web.Request) 
         return candidate
 
     api_base = urlparse(DEFAULT_API_BASE_URL)
-    api_port = str(api_base.port or os.getenv("STREAM_API_PORT", "8004")).strip() or "8004"
+    api_port = str(api_base.port or settings.STREAM_API_PORT).strip() or "8004"
     return parsed._replace(netloc=f"{browser_hostname}:{api_port}").geturl()
 
 
@@ -4234,11 +4234,12 @@ def _find_available_port(host: str, preferred_port: int, max_attempts: int = 20)
 
 
 def main() -> None:
+    settings.require_runtime_secrets()
     APP_CONTEXT.ensure_initialized()
-    settings = _get_web_settings()
+    web_settings = _get_web_settings()
 
-    host = settings.host
-    port = settings.port
+    host = web_settings.host
+    port = web_settings.port
 
     visible_host = "127.0.0.1" if host == "0.0.0.0" else host
     print(f"Visor web disponible en http://{visible_host}:{port}")

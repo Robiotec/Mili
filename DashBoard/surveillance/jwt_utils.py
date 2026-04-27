@@ -4,14 +4,14 @@ import base64
 import hashlib
 import hmac
 import json
-import os
 import time
 from typing import Any
 
+from surveillance import settings
 
-JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("WEB_SESSION_SECRET") or ""
+JWT_SECRET = settings.JWT_SECRET
 JWT_ALGORITHM = "HS256"
-JWT_ACCESS_TOKEN_TTL_SEC = int(os.getenv("JWT_ACCESS_TOKEN_TTL_SECONDS", "3600"))
+JWT_ACCESS_TOKEN_TTL_SEC = settings.JWT_ACCESS_TOKEN_TTL_SECONDS
 
 
 def encode_jwt(payload: dict[str, Any], *, secret: str | None = None) -> str:

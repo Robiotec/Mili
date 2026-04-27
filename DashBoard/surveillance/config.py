@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import math
 import re
 from functools import lru_cache
@@ -11,6 +10,8 @@ from urllib.parse import urljoin, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 import yaml
+
+from surveillance import settings
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,9 +25,9 @@ TOP_LEVEL_YAML_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*:")
 EMBEDDED_M3U8_PATTERN = re.compile(r"""['"](?P<path>[^'"]+\.m3u8(?:\?[^'"]*)?)['"]""", re.IGNORECASE)
 HTTP_SOURCE_SNIFF_TIMEOUT_SEC = 4.0
 HTTP_SOURCE_SNIFF_BYTES = 65536
-MEDIAMTX_HOST = os.getenv("MEDIAMTX_HOST", "")
-MEDIAMTX_WEBRTC_PORT = os.getenv("MEDIAMTX_WEBRTC_PORT", "8989")
-MEDIAMTX_RTSP_PORT = os.getenv("MEDIAMTX_RTSP_PORT", "8654")
+MEDIAMTX_HOST = settings.MEDIAMTX_HOST
+MEDIAMTX_WEBRTC_PORT = settings.MEDIAMTX_WEBRTC_PORT
+MEDIAMTX_RTSP_PORT = settings.MEDIAMTX_RTSP_PORT
 
 
 def read_yaml(path: Path) -> dict[str, Any]:
@@ -497,12 +498,14 @@ def _fetch_http_source_preview(source_url: str) -> tuple[str, str]:
 def _resolve_mediamtx_webrtc_page_to_rtsp(parsed_url, preview: str) -> str | None:
     if not _is_mediamtx_webrtc_page(preview):
         return None
-    if str(parsed_url.port or "") != MEDIAMTX_WEBRTC_PORT:
+    source_port = str(parsed_url.port or "")
+    if source_port != MEDIAMTX_WEBRTC_PORT:
         return None
+    rtsp_port = MEDIAMTX_RTSP_PORT
     path = (parsed_url.path or "").strip("/")
     if not path:
         return None
-    return f"rtsp://{parsed_url.hostname}:{MEDIAMTX_RTSP_PORT}/{path}"
+    return f"rtsp://{parsed_url.hostname}:{rtsp_port}/{path}"
 
 
 def _is_mediamtx_webrtc_page(preview: str) -> bool:

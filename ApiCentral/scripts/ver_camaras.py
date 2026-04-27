@@ -23,7 +23,7 @@ from screeninfo import get_monitors
 
 # MediaMTX RTSP Server
 MEDIAMTX_HOST = "136.119.96.176"
-RTSP_PORT = 8554
+RTSP_PORT = 8654
 
 # Lista de cámaras a visualizar — agregar o quitar según se necesite
 CAMARAS = [

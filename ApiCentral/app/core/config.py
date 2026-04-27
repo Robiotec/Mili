@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     MEDIAMTX_API_URL: str
     MEDIAMTX_API_USERNAME: Optional[str] = None
     MEDIAMTX_API_PASSWORD: Optional[str] = None
+    MEDIAMTX_WEBRTC_PORT: int = 8989
+    MEDIAMTX_HLS_PORT: int = 8988
 
     # ── airplanes.live (reemplaza OpenSky) ──
     # Consulta 1: Ecuador central/norte

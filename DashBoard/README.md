@@ -61,7 +61,7 @@ Lo que estaba debil y ya empezo a corregirse:
 - `DB_PASSWORD`
 - `DB_BOOTSTRAP_ON_STARTUP=true`
 - `DEFAULT_SUPERADMIN_USERNAME=admin`
-- `DEFAULT_SUPERADMIN_PASSWORD=Robiotec@2026`
+- `DEFAULT_SUPERADMIN_PASSWORD` (obligatoria en `.env`; usa un valor unico por despliegue)
 - `DEFAULT_SUPERADMIN_EMAIL=admin@robiotec.local`
 - `DEFAULT_DEMO_ORG_NAME=ROBIOTEC DEMO`
 - `DEFAULT_DEMO_VEHICLE_UNIQUE_ID=DEMO-CAR-001`
@@ -78,6 +78,7 @@ Lo que estaba debil y ya empezo a corregirse:
 
 ```bash
 cd /home/robiotec/DashBoard
+cp .env.example .env
 uv run web_app.py
 ```
 

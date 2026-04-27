@@ -43,11 +43,11 @@ class AuthorizedViewerHtmlTests(unittest.TestCase):
 
         result = build_patched_protected_viewer_html(
             source,
-            "http://example.com:8889/labcam_202/?token=abc123",
+            "http://example.com:8989/labcam_202/?token=abc123",
             options=ViewerLaunchOptions(autoplay=True, muted=True, controls=True),
         )
 
-        self.assertIn('<base href="http://example.com:8889/labcam_202/">', result)
+        self.assertIn('<base href="http://example.com:8989/labcam_202/">', result)
         self.assertIn("window.__AUTHORIZED_VIEWER_URL__", result)
         self.assertIn("window.__AUTHORIZED_VIEWER_SEARCH__", result)
         self.assertIn("__authorized_stream_panel", result)

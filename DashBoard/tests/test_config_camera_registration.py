@@ -113,9 +113,9 @@ class CameraRegistrationConfigTests(unittest.TestCase):
 
         normalize_camera_source.cache_clear()
         with patch("surveillance.config.urlopen", return_value=FakeResponse(html)):
-            resolved = normalize_camera_source("http://example.com:8889/yandri/INFERENCE?controls=1")
+            resolved = normalize_camera_source("http://example.com:8989/yandri/INFERENCE?controls=1")
 
-        self.assertEqual(resolved, "rtsp://example.com:8554/yandri/INFERENCE")
+        self.assertEqual(resolved, "rtsp://example.com:8654/yandri/INFERENCE")
 
     def test_register_camera_source_persists_camera_and_initial_location(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

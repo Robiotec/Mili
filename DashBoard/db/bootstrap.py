@@ -1,32 +1,30 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 from db.connection import DatabaseError, db
 from surveillance.security import hash_password
+from surveillance import settings
 
 
 LOGGER = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parents[1]
 
-DEFAULT_SUPERADMIN_USERNAME = os.getenv("DEFAULT_SUPERADMIN_USERNAME", "admin").strip() or "admin"
-DEFAULT_SUPERADMIN_PASSWORD = os.getenv("DEFAULT_SUPERADMIN_PASSWORD", "Robiotec@2026")
-DEFAULT_SUPERADMIN_EMAIL = os.getenv(
-    "DEFAULT_SUPERADMIN_EMAIL",
-    "admin@robiotec.local",
-).strip() or "admin@robiotec.local"
-DEFAULT_DEMO_ORG_NAME = os.getenv("DEFAULT_DEMO_ORG_NAME", "ROBIOTEC DEMO").strip() or "ROBIOTEC DEMO"
-DEFAULT_DEMO_VEHICLE_ID = os.getenv("DEFAULT_DEMO_VEHICLE_UNIQUE_ID", "DEMO-CAR-001").strip() or "DEMO-CAR-001"
-DEFAULT_DEMO_CAMERA_ID = os.getenv("DEFAULT_DEMO_CAMERA_UNIQUE_ID", "DEMO-CAM-001").strip() or "DEMO-CAM-001"
-BOOTSTRAP_ON_STARTUP = os.getenv("DB_BOOTSTRAP_ON_STARTUP", "true").strip().lower() in {"1", "true", "yes", "on"}
-VEHICLE_CONFIG_TABLE = os.getenv("VEHICLE_TELEMETRY_CONFIG_TABLE", "configuracion_mavlink").strip() or "configuracion_mavlink"
+DEFAULT_SUPERADMIN_USERNAME = settings.DEFAULT_SUPERADMIN_USERNAME
+DEFAULT_SUPERADMIN_PASSWORD = settings.DEFAULT_SUPERADMIN_PASSWORD
+DEFAULT_SUPERADMIN_EMAIL = settings.DEFAULT_SUPERADMIN_EMAIL
+DEFAULT_DEMO_ORG_NAME = settings.DEFAULT_DEMO_ORG_NAME
+DEFAULT_DEMO_VEHICLE_ID = settings.DEFAULT_DEMO_VEHICLE_UNIQUE_ID
+DEFAULT_DEMO_CAMERA_ID = settings.DEFAULT_DEMO_CAMERA_UNIQUE_ID
+BOOTSTRAP_ON_STARTUP = settings.DB_BOOTSTRAP_ON_STARTUP
+VEHICLE_CONFIG_TABLE = settings.VEHICLE_TELEMETRY_CONFIG_TABLE
 
 
 def ensure_bootstrap_seed() -> None:
     if not BOOTSTRAP_ON_STARTUP:
         return
+    settings.require_runtime_secrets()
 
     _ensure_roles()
     superadmin_id = _ensure_superadmin_user()

@@ -14,32 +14,21 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, gettempdir
 from urllib.parse import urljoin, urlparse, urlunparse
 
-from dotenv import load_dotenv
+from surveillance import settings
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(BASE_DIR / ".env")
-
-
-DEFAULT_API_HOST = os.getenv("STREAM_API_HOST", "").strip()
-DEFAULT_API_PORT = os.getenv("STREAM_API_PORT", "").strip()
-DEFAULT_API_BASE_URL = os.getenv("STREAM_API_BASE_URL", "").strip()
-if not DEFAULT_API_BASE_URL and DEFAULT_API_HOST and DEFAULT_API_PORT:
-  DEFAULT_API_BASE_URL = f"http://{DEFAULT_API_HOST}:{DEFAULT_API_PORT}"
-if not DEFAULT_API_BASE_URL:
-  DEFAULT_API_BASE_URL = "http://127.0.0.1:8004"
-DEFAULT_API_USERNAME = os.getenv("STREAM_API_USERNAME", "").strip()
-DEFAULT_API_PASSWORD = os.getenv("STREAM_API_PASSWORD", "").strip()
-DEFAULT_REQUEST_TIMEOUT = float(os.getenv("STREAM_REQUEST_TIMEOUT", "10"))
-DEFAULT_AUTOPLAY_MUTED = os.getenv("STREAM_VIEWER_MUTED", "0").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-}
+DEFAULT_API_HOST = settings.STREAM_API_HOST
+DEFAULT_API_PORT = settings.STREAM_API_PORT
+DEFAULT_API_BASE_URL = settings.STREAM_API_BASE_URL
+DEFAULT_API_USERNAME = settings.STREAM_API_USERNAME
+DEFAULT_API_PASSWORD = settings.STREAM_API_PASSWORD
+DEFAULT_REQUEST_TIMEOUT = settings.STREAM_REQUEST_TIMEOUT
+DEFAULT_AUTOPLAY_MUTED = settings.STREAM_VIEWER_MUTED
 
 LOCAL_VIEWER_PREFIX = "authorized_stream_viewer_"
 LOCAL_VIEWER_SUFFIX = ".html"
-STALE_VIEWER_MAX_AGE_SECONDS = int(os.getenv("VIEWER_CACHE_MAX_AGE_SECONDS", "86400"))
+STALE_VIEWER_MAX_AGE_SECONDS = settings.VIEWER_CACHE_MAX_AGE_SECONDS
 VIEWER_MARKERS = (
     "MediaMTXWebRTCReader",
     "reader.js",

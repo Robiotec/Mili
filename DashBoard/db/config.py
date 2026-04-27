@@ -1,25 +1,18 @@
-from __future__ import annotations
-
-import os
 from dataclasses import dataclass
-from pathlib import Path
-from dotenv import load_dotenv
-
-BASE_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(BASE_DIR / ".env")
+from surveillance import settings
 
 
 @dataclass(frozen=True)
 class DBConfig:
-    host: str = os.getenv("DB_HOST", "127.0.0.1")
-    port: int = int(os.getenv("DB_PORT", "5432"))
-    name: str = os.getenv("DB_NAME", "dashboard")
-    user: str = os.getenv("DB_USER", "dashboarduser")
-    password: str = os.getenv("DB_PASSWORD", "")
-    min_size: int = int(os.getenv("DB_MIN_SIZE", "1"))
-    max_size: int = int(os.getenv("DB_MAX_SIZE", "10"))
-    timeout: int = int(os.getenv("DB_TIMEOUT", "10"))
-    connect_timeout: int = int(os.getenv("DB_CONNECT_TIMEOUT", "5"))
+    host: str = settings.DB_HOST
+    port: int = settings.DB_PORT
+    name: str = settings.DB_NAME
+    user: str = settings.DB_USER
+    password: str = settings.DB_PASSWORD
+    min_size: int = settings.DB_MIN_SIZE
+    max_size: int = settings.DB_MAX_SIZE
+    timeout: int = settings.DB_TIMEOUT
+    connect_timeout: int = settings.DB_CONNECT_TIMEOUT
 
     @property
     def dsn(self) -> str:

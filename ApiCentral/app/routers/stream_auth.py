@@ -13,7 +13,6 @@ import re
 import html
 import requests as http_client
 
-MEDIAMTX_WEBRTC_PORT = 8989
 VALID_PATH_RE = re.compile(r"^[A-Za-z0-9_\-/]{1,100}$")
 
 router = APIRouter()
@@ -457,8 +456,8 @@ def _viewer_page(camera_id: str, token: str, host: str) -> str:
     <script>
         const video = document.getElementById('video');
         const status = document.getElementById('status');
-        const whepUrl = 'http://{host}:{MEDIAMTX_WEBRTC_PORT}/{camera_id}/whep';
-        const hlsUrl = 'http://{host}:8988/{camera_id}/index.m3u8?token={token}';
+        const whepUrl = 'http://{host}:{settings.MEDIAMTX_WEBRTC_PORT}/{camera_id}/whep';
+        const hlsUrl = 'http://{host}:{settings.MEDIAMTX_HLS_PORT}/{camera_id}/index.m3u8?token={token}';
 
         async function startWebRTC() {{
             try {{

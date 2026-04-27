@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from surveillance import settings as app_settings
 from surveillance.config import (
     as_bool,
     normalize_camera_source,
@@ -63,8 +64,8 @@ class WebSettings:
     )
     ice_transport_policy: str = "all"
     default_camera: str = ""
-    host: str = "0.0.0.0"
-    port: int = 8001
+    host: str = app_settings.WEB_HOST
+    port: int = app_settings.WEB_PORT
 
 
 @dataclass(frozen=True)
@@ -437,6 +438,11 @@ def build_web_settings(cfg_data: dict[str, Any]) -> WebSettings:
     except (TypeError, ValueError):
         pass
     settings.port = clamp_int(settings.port, 1, 65535)
+
+    if app_settings.env_is_set("WEB_HOST"):
+        settings.host = app_settings.WEB_HOST
+    if app_settings.env_is_set("WEB_PORT"):
+        settings.port = app_settings.WEB_PORT
 
     return settings
 

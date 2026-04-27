@@ -14,8 +14,8 @@ con tokens opacos y cookies de sesión HttpOnly.
 ```
 ┌────────────────────┐                           ┌───────────────────────┐
 │   FastAPI :8003    │                           │     MediaMTX          │
-│   (API Central)    │────externalAuth request──►│  RTSP  :8554          │
-│                    │                           │  WebRTC:8889          │
+│   (API Central)    │────externalAuth request──►│  RTSP  :8654          │
+│                    │                           │  WebRTC:8989          │
 │  - POST /auth/login     ←──────────────────────┤  API   :9997 (local)  │
 │  - POST /auth/validate  response {ok: true}    │                       │
 │  - POST /stream-auth/...                       │  externalAuth:        │
@@ -44,8 +44,8 @@ con tokens opacos y cookies de sesión HttpOnly.
 | Servicio         | Puerto | Protocolo | Acceso externo | Protección                              |
 |------------------|--------|-----------|----------------|-----------------------------------------|
 | FastAPI          | 8003   | HTTP      | Sí             | JWT (login), tokens opacos (streams)    |
-| MediaMTX RTSP    | 8554   | RTSP      | Sí             | externalAuth (leer=token, escribir=lib)|
-| MediaMTX WebRTC  | 8889   | HTTP      | Sí             | externalAuth (token en query param)     |
+| MediaMTX RTSP    | 8654   | RTSP      | Sí             | externalAuth (leer=token, escribir=lib)|
+| MediaMTX WebRTC  | 8989   | HTTP      | Sí             | externalAuth (token en query param)     |
 | MediaMTX API     | 9997   | HTTP      | **Bloqueado**  | iptables DROP + bind 127.0.0.1          |
 
 **IP del servidor**: `136.119.96.176`
@@ -130,7 +130,7 @@ Respuesta:
 #### Opción A: Viewer integrado (recomendado para pruebas)
 
 Abrir `stream_url` en el navegador. FastAPI sirve un reproductor WebRTC
-que se conecta a `http://136.119.96.176:8889/CAM1/whep?token=xxx`.
+que se conecta a `http://136.119.96.176:8989/CAM1/whep?token=xxx`.
 
 Si se abre desde otro navegador sin la cookie → se muestra:
 **"ROBIOTEC PROTEGE A SUS CLIENTES"**
@@ -150,7 +150,7 @@ Si se abre desde otro navegador sin la cookie → se muestra:
 
 ```javascript
 const API = 'http://136.119.96.176:8003';
-const MEDIAMTX = 'http://136.119.96.176:8889';
+const MEDIAMTX = 'http://136.119.96.176:8989';
 
 // 1. Obtener token opaco (requiere JWT en Authorization)
 const res = await fetch(`${API}/stream-auth/stream/token/CAM1`, {
@@ -226,7 +226,7 @@ R-Box ──RTSP publish (video+audio)──► MediaMTX (CAM1)
                                      ▼ RTSP publish libre (video+audio)
                                   MediaMTX (CAM1_INFERENCE)
                                            │
-                                           ▼ WebRTC :8889 (con stream_read token)
+                                           ▼ WebRTC :8989 (con stream_read token)
                                       Dashboard (video+audio)
 ```
 
@@ -259,8 +259,8 @@ Respuesta:
   "read_paths": ["CAM1", "CAM2"],
   "publish_paths": ["CAM1_INFERENCE", "CAM2_INFERENCE"],
   "rtsp_examples": {
-    "CAM1": { "read": "rtsp://inference:svc_xYz...@136.119.96.176:8554/CAM1" },
-    "CAM1_INFERENCE": { "publish": "rtsp://inference:svc_xYz...@136.119.96.176:8554/CAM1_INFERENCE" }
+    "CAM1": { "read": "rtsp://inference:svc_xYz...@136.119.96.176:8654/CAM1" },
+    "CAM1_INFERENCE": { "publish": "rtsp://inference:svc_xYz...@136.119.96.176:8654/CAM1_INFERENCE" }
   }
 }
 ```
@@ -273,7 +273,7 @@ externalAuth en el campo `password`):
 ```bash
 # FFmpeg — leer CAM1 con service-token
 ffmpeg -rtsp_transport tcp \
-  -i "rtsp://inference:svc_xYz...@136.119.96.176:8554/CAM1" \
+  -i "rtsp://inference:svc_xYz...@136.119.96.176:8654/CAM1" \
   -f rawvideo -pix_fmt bgr24 pipe:1
 ```
 
@@ -281,7 +281,7 @@ ffmpeg -rtsp_transport tcp \
 import cv2
 
 # OpenCV — el token va como password
-cap = cv2.VideoCapture('rtsp://inference:svc_xYz...@136.119.96.176:8554/CAM1')
+cap = cv2.VideoCapture('rtsp://inference:svc_xYz...@136.119.96.176:8654/CAM1')
 
 while True:
     ret, frame = cap.read()
@@ -304,8 +304,8 @@ SERVICE_TOKEN = "svc_xYz..."
 SERVER = "136.119.96.176"
 CAMERA = "CAM1"
 
-rtsp_source = f"rtsp://inference:{SERVICE_TOKEN}@{SERVER}:8554/{CAMERA}"
-rtsp_dest = f"rtsp://{SERVER}:8554/{CAMERA}_INFERENCE"
+rtsp_source = f"rtsp://inference:{SERVICE_TOKEN}@{SERVER}:8654/{CAMERA}"
+rtsp_dest = f"rtsp://{SERVER}:8654/{CAMERA}_INFERENCE"
 
 cap = cv2.VideoCapture(rtsp_source)
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -404,7 +404,7 @@ R-Box encendida
     │
     ▼ Por cada cámara:
     ffmpeg -i rtsp://cam_local:554/ch1 -c:v copy -c:a aac \
-           -f rtsp rtsp://rbox:TOKEN@136.119.96.176:8554/CAM1
+           -f rtsp rtsp://rbox:TOKEN@136.119.96.176:8654/CAM1
 ```
 
 ### Endpoint R-Box Init (endpoint único para inicialización)
@@ -435,7 +435,7 @@ Respuesta:
     {
       "stream_name": "CAM1",
       "rtsp_source": "rtsp://admin:pass@192.168.1.100:554/ch1",
-      "publish_url": "rtsp://rbox:TOKEN@136.119.96.176:8554/CAM1",
+      "publish_url": "rtsp://rbox:TOKEN@136.119.96.176:8654/CAM1",
       "es_ptz": false,
       "marca": "Hikvision",
       "modelo": "DS-2CD2143",
@@ -490,7 +490,7 @@ Abrir `scripts/dashboard_webrtc.html` en el navegador. Permite:
 
 ```javascript
 const API = 'http://136.119.96.176:8003';
-const MEDIAMTX = 'http://136.119.96.176:8889';
+const MEDIAMTX = 'http://136.119.96.176:8989';
 
 async function connectCamera(jwt, cameraId, videoElement) {
     // 1. Obtener token opaco
@@ -703,8 +703,8 @@ iptables -A INPUT -p tcp --dport 8888 -j DROP
 iptables -A INPUT -p tcp --dport 9997 -s 127.0.0.1 -j ACCEPT
 iptables -A INPUT -p tcp --dport 9997 -j DROP
 
-# WebRTC :8889 ABIERTO (protegido por externalAuth)
-# RTSP :8554 ABIERTO (protegido por externalAuth)
+# WebRTC :8989 ABIERTO (protegido por externalAuth)
+# RTSP :8654 ABIERTO (protegido por externalAuth)
 # FastAPI :8003 ABIERTO
 # ICE mux :8189 ABIERTO
 ```

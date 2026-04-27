@@ -13,6 +13,7 @@ if __package__ is None or __package__ == "":
 else:
     from db.connection import db as conn
 
+from surveillance import settings
 from surveillance.vehicle_registry import VehicleRegistryEntry, VehicleRegistryStore
 
 
@@ -27,7 +28,7 @@ def _safe_sql_identifier(value: str, *, default: str) -> str:
 
 
 VEHICLE_TELEMETRY_CONFIG_TABLE = _safe_sql_identifier(
-    os.getenv("VEHICLE_TELEMETRY_CONFIG_TABLE", "configuracion_mavlink"),
+    settings.VEHICLE_TELEMETRY_CONFIG_TABLE,
     default="configuracion_mavlink",
 )
 
